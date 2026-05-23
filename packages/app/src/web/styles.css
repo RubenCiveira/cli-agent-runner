@@ -1,0 +1,216 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
+
+:root {
+  --bg: #0d0d0d;
+  --bg-panel: #141414;
+  --bg-hover: #1c1c1c;
+  --bg-active: #212121;
+  --border: #272727;
+  --text: #e2e2e2;
+  --text-muted: #6b6b6b;
+  --text-dim: #444;
+  --accent: #7c6af7;
+  --accent-dim: rgba(124,106,247,.15);
+  --green: #3fb950;
+  --red: #f85149;
+  --yellow: #d29922;
+  --user-bg: #1a2f4a;
+  --assistant-bg: #181818;
+  --sidebar-w: 252px;
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --radius: 8px;
+  --radius-sm: 5px;
+}
+
+html, body, #root { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 13px; line-height: 1.5 }
+
+/* ── Layout ───────────────────────────────────────────────────────────────── */
+
+.app { display: grid; grid-template-columns: var(--sidebar-w) 1fr; height: 100vh; overflow: hidden }
+
+/* ── Sidebar ──────────────────────────────────────────────────────────────── */
+
+.sidebar { display: flex; flex-direction: column; background: var(--bg-panel); border-right: 1px solid var(--border); overflow: hidden }
+
+.sidebar-header { padding: 14px 16px 10px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px }
+.sidebar-header h1 { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .08em; flex: 1 }
+
+.sidebar-section { display: flex; flex-direction: column; overflow: hidden }
+.sidebar-section + .sidebar-section { border-top: 1px solid var(--border) }
+.sidebar-section.grow { flex: 1; overflow: hidden }
+
+.section-header { display: flex; align-items: center; padding: 8px 12px; gap: 6px }
+.section-header span { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); flex: 1 }
+
+.section-list { overflow-y: auto; flex: 1 }
+
+.sidebar-item { display: flex; flex-direction: column; padding: 7px 12px; cursor: pointer; border-radius: 0; transition: background .1s; gap: 2px }
+.sidebar-item:hover { background: var(--bg-hover) }
+.sidebar-item.active { background: var(--accent-dim) }
+.sidebar-item .item-name { font-size: 12px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.sidebar-item .item-meta { font-size: 10px; color: var(--text-muted); display: flex; gap: 6px; align-items: center }
+.sidebar-item.active .item-name { color: #a89fff }
+
+.tag { font-size: 9px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 1px 5px; border-radius: 3px; background: var(--accent-dim); color: var(--accent) }
+.tag.green { background: rgba(63,185,80,.12); color: var(--green) }
+
+/* ── Icon buttons ─────────────────────────────────────────────────────────── */
+
+.btn-icon { background: none; border: none; cursor: pointer; padding: 3px; border-radius: var(--radius-sm); color: var(--text-muted); display: flex; align-items: center; transition: color .1s, background .1s }
+.btn-icon:hover { color: var(--text); background: var(--bg-hover) }
+
+.btn { border: none; cursor: pointer; padding: 6px 14px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 500; transition: opacity .1s }
+.btn-primary { background: var(--accent); color: #fff }
+.btn-primary:hover { opacity: .85 }
+.btn-ghost { background: var(--bg-hover); color: var(--text) }
+.btn-ghost:hover { background: var(--bg-active) }
+.btn-danger { background: var(--red); color: #fff }
+.btn-danger:hover { opacity: .85 }
+.btn:disabled { opacity: .4; cursor: not-allowed }
+
+/* ── Chat panel ───────────────────────────────────────────────────────────── */
+
+.chat-panel { display: flex; flex-direction: column; overflow: hidden; background: var(--bg) }
+
+/* Empty state */
+.empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--text-muted); padding: 2rem }
+.empty-state .empty-icon { font-size: 2.5rem; opacity: .3 }
+.empty-state h2 { font-size: 15px; font-weight: 500; color: var(--text-dim) }
+.empty-state p { font-size: 12px; text-align: center; max-width: 280px }
+
+/* Chat header */
+.chat-header { padding: 10px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: var(--bg-panel); flex-shrink: 0 }
+.chat-header .session-name { font-size: 13px; font-weight: 600; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.chat-header .header-meta { font-size: 11px; color: var(--text-muted) }
+.changes-badge { font-size: 11px; padding: 3px 8px; border-radius: var(--radius-sm); background: var(--bg-hover); color: var(--text-muted); cursor: pointer; border: 1px solid var(--border); transition: background .1s }
+.changes-badge:hover { background: var(--bg-active); color: var(--text) }
+.changes-badge.has-changes { border-color: var(--accent); color: var(--accent); background: var(--accent-dim) }
+
+/* Messages */
+.messages { flex: 1; overflow-y: auto; padding: 20px 0; display: flex; flex-direction: column; gap: 0 }
+
+.message { padding: 6px 20px; display: flex; gap: 10px; align-items: flex-start }
+.message:hover { background: rgba(255,255,255,.015) }
+
+.msg-role { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex-shrink: 0; margin-top: 2px; letter-spacing: 0 }
+.msg-role.user { background: var(--user-bg); color: #7ab4f5 }
+.msg-role.assistant { background: var(--accent-dim); color: var(--accent) }
+
+.msg-content { flex: 1; min-width: 0; font-size: 13px; line-height: 1.65; white-space: pre-wrap; word-break: break-word }
+.msg-content.streaming { color: var(--text) }
+.msg-content.streaming::after { content: '▋'; animation: blink .8s step-end infinite; color: var(--accent) }
+@keyframes blink { 50% { opacity: 0 } }
+
+/* Code blocks in messages */
+.msg-content code { font-family: var(--mono); font-size: 11.5px; background: var(--bg-panel); padding: 1px 4px; border-radius: 3px; color: #c9d1d9 }
+.msg-content pre { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; overflow-x: auto; margin: 6px 0 }
+.msg-content pre code { background: none; padding: 0 }
+
+/* Chat input */
+.chat-input-area { padding: 12px 18px; border-top: 1px solid var(--border); display: flex; gap: 8px; align-items: flex-end; background: var(--bg-panel); flex-shrink: 0 }
+.chat-textarea { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-family: var(--font); font-size: 13px; padding: 8px 12px; resize: none; min-height: 40px; max-height: 160px; outline: none; line-height: 1.5; transition: border-color .15s }
+.chat-textarea:focus { border-color: var(--accent) }
+.chat-textarea::placeholder { color: var(--text-dim) }
+.send-btn { width: 36px; height: 36px; border-radius: var(--radius-sm); background: var(--accent); border: none; cursor: pointer; color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: opacity .1s }
+.send-btn:hover:not(:disabled) { opacity: .85 }
+.send-btn:disabled { opacity: .35; cursor: not-allowed }
+
+/* ── Exchange turns & events ──────────────────────────────────────────────── */
+
+.exchange-turn { display: flex; flex-direction: column }
+
+/* Events section */
+.events-section { padding: 4px 20px 4px 50px }
+
+.events-toggle { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 11px; padding: 3px 6px; border-radius: var(--radius-sm); display: flex; align-items: center; gap: 6px; transition: color .1s, background .1s }
+.events-toggle:hover { color: var(--text); background: var(--bg-hover) }
+.events-arrow { font-size: 10px; line-height: 1; color: var(--text-muted) }
+
+/* Status labels */
+.ev-status { font-size: 11px; font-weight: 500 }
+.ev-status.running { color: var(--accent) }
+.ev-status.done    { color: var(--green) }
+.ev-status.failed  { color: var(--red) }
+
+/* Running spinner */
+.ev-spinner { display: inline-block; width: 8px; height: 8px; border: 1.5px solid var(--accent); border-top-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0 }
+@keyframes spin { to { transform: rotate(360deg) } }
+
+.ev-count { font-size: 10px; color: var(--text-muted); background: var(--bg-active); padding: 1px 6px; border-radius: 10px }
+
+/* Events body */
+.events-body { margin-top: 4px; display: flex; flex-direction: column; gap: 3px }
+
+/* Individual event rows */
+.ev-row { display: flex; flex-direction: column; border-radius: var(--radius-sm); overflow: hidden; font-size: 11px; font-family: var(--mono); border: 1px solid var(--border) }
+.ev-row.tool-use      { border-color: rgba(124,106,247,.3) }
+.ev-row.tool-result   { border-color: rgba(63,185,80,.2) }
+.ev-row.error-ev      { border-color: rgba(248,81,73,.3) }
+.ev-row.text-ev       { border-color: var(--border) }
+.ev-row.step-finish-ev{ border-color: var(--border); opacity: .7 }
+.ev-row.raw-ev        { border-color: var(--border); opacity: .5 }
+
+.ev-row > :first-child { display: flex; align-items: center; gap: 6px; padding: 2px 8px }
+
+.ev-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; padding: 2px 6px; border-radius: 3px; flex-shrink: 0 }
+.tool-use .ev-label    { background: rgba(124,106,247,.15); color: var(--accent) }
+.tool-result .ev-label { background: rgba(63,185,80,.1);    color: var(--green) }
+.error-ev .ev-label    { background: rgba(248,81,73,.15);   color: var(--red) }
+.text-ev .ev-label     { background: var(--bg-active);      color: var(--text-muted) }
+.raw-ev .ev-label      { background: var(--bg-active);      color: var(--text-muted) }
+
+.ev-name { color: var(--text); font-weight: 600; font-size: 11px }
+.ev-meta { font-size: 10px; color: var(--text-muted); margin-left: auto }
+
+/* Step group */
+.ev-step { border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; font-size: 11px; font-family: var(--mono) }
+.ev-step-header { display: flex; align-items: center; gap: 6px; padding: 3px 8px; background: var(--bg-active) }
+.ev-step-body { display: flex; flex-direction: column; gap: 3px; padding: 4px }
+.ev-step .ev-row { margin: 0 }
+
+.ev-data { padding: 5px 10px; margin: 0; overflow-x: auto; max-height: 180px; overflow-y: auto; white-space: pre; color: var(--text-muted); border-top: 1px solid var(--border); background: var(--bg); font-size: 10.5px; line-height: 1.5; font-family: var(--mono) }
+.ev-data.ev-error { color: var(--red) }
+
+/* For text and raw rows inline data (no border-top sub-block) */
+.text-ev .ev-data, .raw-ev .ev-data { border-top: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-height: none; color: var(--text-muted) }
+
+/* ── Changes panel ────────────────────────────────────────────────────────── */
+
+.changes-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 100; display: flex; align-items: stretch; justify-content: flex-end }
+.changes-panel { width: min(640px, 90vw); background: var(--bg-panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden }
+.changes-panel-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px }
+.changes-panel-header h2 { flex: 1; font-size: 14px; font-weight: 600 }
+.changes-panel-body { flex: 1; overflow-y: auto; padding: 12px }
+.change-file { margin-bottom: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden }
+.change-file-header { padding: 7px 12px; display: flex; align-items: center; gap: 8px; background: var(--bg-active); font-size: 11px; font-family: var(--mono) }
+.change-file-header .change-path { flex: 1; color: var(--text) }
+.badge-added { color: var(--green) }
+.badge-modified { color: var(--yellow) }
+.badge-deleted { color: var(--red) }
+.diff-block { font-family: var(--mono); font-size: 11px; line-height: 1.5; overflow-x: auto; padding: 8px 0 }
+.diff-line { padding: 0 12px; white-space: pre }
+.diff-line.add { background: rgba(63,185,80,.08); color: var(--green) }
+.diff-line.del { background: rgba(248,81,73,.08); color: var(--red) }
+.diff-line.hunk { color: var(--accent); opacity: .7 }
+.diff-line.ctx { color: var(--text-muted) }
+.no-diff { padding: 8px 12px; font-size: 11px; color: var(--text-muted); font-family: var(--mono) }
+
+/* ── Modal ────────────────────────────────────────────────────────────────── */
+
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px }
+.modal { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; width: 380px; display: flex; flex-direction: column; gap: 14px }
+.modal h2 { font-size: 14px; font-weight: 600 }
+.field { display: flex; flex-direction: column; gap: 5px }
+.field label { font-size: 11px; color: var(--text-muted); font-weight: 500 }
+.field input, .field select { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius-sm); padding: 7px 10px; font-size: 13px; outline: none; font-family: var(--font); transition: border-color .15s }
+.field input:focus, .field select:focus { border-color: var(--accent) }
+.field select option { background: var(--bg-panel) }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end }
+
+/* ── Scrollbar ────────────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar { width: 6px; height: 6px }
+::-webkit-scrollbar-track { background: transparent }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px }
+::-webkit-scrollbar-thumb:hover { background: #3a3a3a }

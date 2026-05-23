@@ -1,0 +1,26 @@
+{
+  "name": "@runner/app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run scripts/dev.ts",
+    "build": "bun run build:web && echo 'Build complete'",
+    "build:web": "mkdir -p public && cp src/web/index.html public/index.html && bun build src/web/main.tsx --outdir public --target browser --minify",
+    "cli": "bun run src/cli/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@runner/core": "workspace:*",
+    "commander": "^12.1.0",
+    "hono": "^4.7.10",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "typescript": "^5.8.3"
+  }
+}

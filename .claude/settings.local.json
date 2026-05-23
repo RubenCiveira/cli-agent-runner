@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:api.github.com)",
+      "Bash(bun install *)",
+      "Bash(bun typecheck *)",
+      "Bash(bun run *)",
+      "Bash(bun -e ' *)",
+      "Bash(bun add *)",
+      "Bash(bun build *)"
+    ]
+  }
+}
