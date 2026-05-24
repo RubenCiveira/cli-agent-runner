@@ -149,25 +149,28 @@ export async function sendMessage(params: SendMessageParams): Promise<SendMessag
   const assistantParts: string[] = []
   let capturedExternalSessionId: string | null = session.external_session_id
 
+  function textFromEvent(event: AgentEvent): string {
+    return event.type === 'text' ? event.text : ''
+  }
+
   return new Promise((resolve) => {
     invoke({
       agentId: session!.agent_id,
       stdinPayload,
       options: {
         model: session!.model ?? undefined,
-        // Pass agent's native session ID so it can resume its own conversation
         externalSessionId: session!.external_session_id ?? undefined,
       },
       cwd: projectPath,
       onExternalSessionId: (id) => {
-        // First run in this session — persist the agent's native session ID
         capturedExternalSessionId = id
         setExternalSessionId(db, session!.id, id)
       },
       onEvent: (event) => {
         events.push(event)
         appendEvent(db, runId, event)
-        if (event.type === 'text') assistantParts.push(event.text)
+        const text = textFromEvent(event)
+        if (text) assistantParts.push(text)
         params.onEvent?.(event)
       },
       onDone: (exitCode) => {

@@ -7,7 +7,12 @@
     "skipLibCheck": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
-    "typeRoots": ["./node_modules/@types", "../../node_modules/@types"]
+    "typeRoots": [
+      "../../node_modules/.bun/node_modules",
+      "../../node_modules/@types",
+      "./node_modules/@types"
+    ],
+    "types": ["bun-types"]
   },
   "include": ["src/**/*"]
 }

@@ -175,9 +175,8 @@ function EventRow({ data }: { data: EventData }) {
 
 function EventsSection({ steps, runStatus }: { steps: RunEvent[]; runStatus: Exchange['runStatus'] }) {
   const [open, setOpen] = useState(false)
-  if (steps.length === 0) return null
-
   const isActive = runStatus === 'queued' || runStatus === 'running'
+  if (steps.length === 0 && !isActive) return null
   const stepCount = steps.filter((e) => e.data.type === 'step' || e.data.type === 'tool_use').length
 
   return (
@@ -328,7 +327,6 @@ export function Chat({ session }: ChatProps) {
     setStreaming(true)
     setStreamText('')
 
-    // Show optimistic pending exchange
     const optimistic: Exchange = {
       runId: 'pending',
       runStatus: 'running',
@@ -339,6 +337,41 @@ export function Chat({ session }: ChatProps) {
     setPendingExchange(optimistic)
 
     let fullText = ''
+    let pollingTimer: ReturnType<typeof setTimeout> | null = null
+    let done = false
+
+    const finalize = async () => {
+      done = true
+      if (pollingTimer) { clearTimeout(pollingTimer); pollingTimer = null }
+      const final = await api.sessions.exchanges(session.id)
+      setExchanges(final)
+      console.debug('[exchanges:final]', session.id, logExchanges(final))
+      api.sessions.changes(session.id).then((c) => setChangesCount(c.length))
+      setPendingExchange(null)
+      setStreaming(false)
+      setStreamText('')
+    }
+
+    const poll = async () => {
+      if (done) return
+      try {
+        const updated = await api.sessions.exchanges(session.id)
+        setExchanges(updated)
+        if (updated.length > 0) setPendingExchange(null)
+        const last = updated[updated.length - 1]
+        if (done) return
+        if (last?.runStatus === 'running' || last?.runStatus === 'queued') {
+          pollingTimer = setTimeout(poll, 2000)
+        } else {
+          await finalize()
+        }
+      } catch {
+        if (!done) pollingTimer = setTimeout(poll, 2000)
+      }
+    }
+
+    pollingTimer = setTimeout(poll, 2000)
+
     try {
       await api.sessions.sendMessage(session.id, content, (event: AgentEvent) => {
         if (event.type === 'text') {
@@ -346,18 +379,10 @@ export function Chat({ session }: ChatProps) {
           setStreamText(fullText)
         }
       })
-
-      const updated = await api.sessions.exchanges(session.id)
-      setExchanges(updated)
-      console.debug('[exchanges:after-send]', session.id, logExchanges(updated))
-      const updatedChanges = await api.sessions.changes(session.id)
-      setChangesCount(updatedChanges.length)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error sending message')
     } finally {
-      setPendingExchange(null)
-      setStreaming(false)
-      setStreamText('')
+      if (!done) await finalize()
     }
   }, [input, streaming, session.id])
 

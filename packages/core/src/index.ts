@@ -59,14 +59,15 @@ export {
 
 // Runtimes
 export type {
-  RuntimeAgentDef,
+  RuntimeAgent,
   DetectedAgent,
   ModelOption,
   AgentEvent,
   RunOptions,
+  AgentInvokeParams,
 } from './runtimes/types.ts'
 
-export { getAgentDef, listAgentDefs, registerAgent } from './runtimes/registry.ts'
+export { getAgent, listAgents, registerAgent } from './runtimes/registry.ts'
 export { detectAgents, detectAgent } from './runtimes/detection.ts'
 export { invoke, invokeAsync } from './runtimes/invocation.ts'
 

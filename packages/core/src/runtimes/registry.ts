@@ -1,22 +1,19 @@
-import type { RuntimeAgentDef } from './types.ts'
-import { opencodeAgentDef } from './defs/opencode.ts'
+import type { RuntimeAgent } from './types.ts'
+import { opencodeAgent } from './defs/opencode.ts'
 
-const BASE_DEFS: RuntimeAgentDef[] = [opencodeAgentDef]
+const AGENTS: RuntimeAgent[] = [opencodeAgent]
 
-// Extend here: import and push your own RuntimeAgentDef
-const AGENT_DEFS: RuntimeAgentDef[] = [...BASE_DEFS]
-
-export function registerAgent(def: RuntimeAgentDef): void {
-  if (AGENT_DEFS.some((d) => d.id === def.id)) {
-    throw new Error(`Duplicate agent id: ${def.id}`)
+export function registerAgent(agent: RuntimeAgent): void {
+  if (AGENTS.some((a) => a.id === agent.id)) {
+    throw new Error(`Duplicate agent id: ${agent.id}`)
   }
-  AGENT_DEFS.push(def)
+  AGENTS.push(agent)
 }
 
-export function getAgentDef(id: string): RuntimeAgentDef | null {
-  return AGENT_DEFS.find((d) => d.id === id) ?? null
+export function getAgent(id: string): RuntimeAgent | null {
+  return AGENTS.find((a) => a.id === id) ?? null
 }
 
-export function listAgentDefs(): RuntimeAgentDef[] {
-  return [...AGENT_DEFS]
+export function listAgents(): RuntimeAgent[] {
+  return [...AGENTS]
 }

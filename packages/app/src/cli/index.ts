@@ -6,7 +6,7 @@ import { existsSync } from 'node:fs'
 import {
   sendMessage,
   detectAgents,
-  getAgentDef,
+
   loadSkills,
   getDb,
   listProjects,
@@ -195,7 +195,7 @@ program.command('agents').option('--json').action(async (opts: { json?: boolean 
   for (const a of agents) {
     const mark = a.available ? '✓' : '✗'
     console.log(`  ${mark} ${a.name}${a.version ? ` v${a.version}` : ''}${a.available ? ` (${a.models.length} models)` : ''}`)
-    if (!a.available && getAgentDef(a.id)?.installUrl) console.log(`    ${getAgentDef(a.id)?.installUrl}`)
+
   }
 })
 
