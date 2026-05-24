@@ -6,6 +6,7 @@ import type { AgentEvent } from './runtimes/types.ts'
 import { invoke } from './runtimes/invocation.ts'
 import { loadSkills, findSkill } from './skills/loader.ts'
 import { buildStdinPayload } from './prompts/composer.ts'
+import { ASK_USER_PROMPT } from './prompts/ask-user.ts'
 import { loadProjectContext, projectSkillsRoot } from './projects/context.ts'
 import { takeSnapshot, computeChanges } from './files/tracker.ts'
 import {
@@ -58,7 +59,9 @@ const GLOBAL_SKILLS_ROOTS = [
 ]
 
 const DEFAULT_BASE_INSTRUCTIONS = `You are a helpful AI assistant.
-Be concise and precise. When writing code, prefer readability and correctness.`
+Be concise and precise. When writing code, prefer readability and correctness.
+
+${ASK_USER_PROMPT}`
 
 export async function sendMessage(params: SendMessageParams): Promise<SendMessageResult> {
   const db = getDb()

@@ -65,7 +65,21 @@ export type {
   AgentEvent,
   RunOptions,
   AgentInvokeParams,
+  QuestionForm,
+  FormQuestion,
+  QuestionOption,
+  QuestionType,
+  FormAnswers,
 } from './runtimes/types.ts'
+
+// Question-form utilities
+export {
+  ASK_USER_PROMPT,
+  splitOnQuestionForms,
+  formatFormAnswers,
+  hasQuestionForm,
+} from './prompts/ask-user.ts'
+export type { FormSegment } from './prompts/ask-user.ts'
 
 export { getAgent, listAgents, registerAgent } from './runtimes/registry.ts'
 export { detectAgents, detectAgent } from './runtimes/detection.ts'

@@ -23668,6 +23668,17 @@ var import_client = __toESM(require_client(), 1);
 var import_react3 = __toESM(require_react(), 1);
 
 // src/web/api.ts
+function formatFormAnswers(form, answers) {
+  const header = form.id ? `[form answers — ${form.id}]` : "[form answers]";
+  const lines = form.questions.map((q) => {
+    const answer = answers[q.id];
+    const text = Array.isArray(answer) ? answer.join(", ") : answer ?? "(skipped)";
+    return `- ${q.label}: ${text}`;
+  });
+  return `${header}
+${lines.join(`
+`)}`;
+}
 async function* readSSE(resp) {
   const reader = resp.body.getReader();
   const dec = new TextDecoder;
@@ -24335,6 +24346,156 @@ function logExchanges(exchanges) {
     })
   }));
 }
+var OTHER_VALUE = "__other__";
+function QuestionFormWidget({ form, onSubmit }) {
+  const [answers, setAnswers] = import_react.useState({});
+  const [otherText, setOtherText] = import_react.useState({});
+  const setTextAnswer = (id, val) => setAnswers((a) => ({ ...a, [id]: val }));
+  const toggleCheckbox = (id, value, maxSel) => {
+    setAnswers((a) => {
+      const current = a[id] ?? [];
+      if (current.includes(value))
+        return { ...a, [id]: current.filter((v) => v !== value) };
+      if (maxSel && current.length >= maxSel)
+        return a;
+      return { ...a, [id]: [...current, value] };
+    });
+  };
+  const handleSubmit = () => {
+    const final = {};
+    for (const q of form.questions) {
+      if (q.type === "text" || q.type === "textarea") {
+        final[q.id] = answers[q.id] ?? "";
+      } else if (q.type === "radio") {
+        const val = answers[q.id] ?? "";
+        final[q.id] = val === OTHER_VALUE ? otherText[q.id] ?? "" : val;
+      } else if (q.type === "checkbox") {
+        const checked = answers[q.id] ?? [];
+        final[q.id] = checked.map((v) => v === OTHER_VALUE ? otherText[q.id] ?? "" : v);
+      }
+    }
+    onSubmit(final);
+  };
+  return /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("div", {
+    className: "question-form",
+    children: [
+      form.title && /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("div", {
+        className: "qf-title",
+        children: form.title
+      }, undefined, false, undefined, this),
+      form.questions.map((q) => /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("div", {
+        className: "qf-question",
+        children: [
+          /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("div", {
+            className: "qf-label",
+            children: [
+              q.label,
+              q.required && /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("span", {
+                className: "qf-required",
+                children: " *"
+              }, undefined, false, undefined, this)
+            ]
+          }, undefined, true, undefined, this),
+          q.type === "text" && /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("input", {
+            className: "qf-input",
+            type: "text",
+            placeholder: q.placeholder ?? "",
+            value: answers[q.id] ?? "",
+            onChange: (e) => setTextAnswer(q.id, e.target.value)
+          }, undefined, false, undefined, this),
+          q.type === "textarea" && /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("textarea", {
+            className: "qf-input qf-textarea",
+            placeholder: q.placeholder ?? "",
+            value: answers[q.id] ?? "",
+            onChange: (e) => setTextAnswer(q.id, e.target.value)
+          }, undefined, false, undefined, this),
+          q.type === "radio" && /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("div", {
+            className: "qf-options",
+            children: [
+              (q.options ?? []).map((opt) => /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("label", {
+                className: "qf-option",
+                children: [
+                  /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("input", {
+                    type: "radio",
+                    name: q.id,
+                    value: opt.value,
+                    checked: answers[q.id] === opt.value,
+                    onChange: () => setAnswers((a) => ({ ...a, [q.id]: opt.value }))
+                  }, undefined, false, undefined, this),
+                  opt.label
+                ]
+              }, opt.value, true, undefined, this)),
+              /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("label", {
+                className: "qf-option",
+                children: [
+                  /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("input", {
+                    type: "radio",
+                    name: q.id,
+                    value: OTHER_VALUE,
+                    checked: answers[q.id] === OTHER_VALUE,
+                    onChange: () => setAnswers((a) => ({ ...a, [q.id]: OTHER_VALUE }))
+                  }, undefined, false, undefined, this),
+                  "Other",
+                  answers[q.id] === OTHER_VALUE && /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("input", {
+                    className: "qf-other-input",
+                    type: "text",
+                    placeholder: "Specify…",
+                    value: otherText[q.id] ?? "",
+                    onChange: (e) => setOtherText((t) => ({ ...t, [q.id]: e.target.value })),
+                    autoFocus: true
+                  }, undefined, false, undefined, this)
+                ]
+              }, undefined, true, undefined, this)
+            ]
+          }, undefined, true, undefined, this),
+          q.type === "checkbox" && /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("div", {
+            className: "qf-options",
+            children: [
+              (q.options ?? []).map((opt) => {
+                const checked = (answers[q.id] ?? []).includes(opt.value);
+                return /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("label", {
+                  className: "qf-option",
+                  children: [
+                    /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("input", {
+                      type: "checkbox",
+                      checked,
+                      onChange: () => toggleCheckbox(q.id, opt.value, q.maxSelections)
+                    }, undefined, false, undefined, this),
+                    opt.label
+                  ]
+                }, opt.value, true, undefined, this);
+              }),
+              /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("label", {
+                className: "qf-option",
+                children: [
+                  /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("input", {
+                    type: "checkbox",
+                    checked: (answers[q.id] ?? []).includes(OTHER_VALUE),
+                    onChange: () => toggleCheckbox(q.id, OTHER_VALUE, q.maxSelections)
+                  }, undefined, false, undefined, this),
+                  "Other",
+                  (answers[q.id] ?? []).includes(OTHER_VALUE) && /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("input", {
+                    className: "qf-other-input",
+                    type: "text",
+                    placeholder: "Specify…",
+                    value: otherText[q.id] ?? "",
+                    onChange: (e) => setOtherText((t) => ({ ...t, [q.id]: e.target.value })),
+                    autoFocus: true
+                  }, undefined, false, undefined, this)
+                ]
+              }, undefined, true, undefined, this)
+            ]
+          }, undefined, true, undefined, this)
+        ]
+      }, q.id, true, undefined, this)),
+      /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("button", {
+        className: "qf-submit",
+        onClick: handleSubmit,
+        children: "Submit"
+      }, undefined, false, undefined, this)
+    ]
+  }, undefined, true, undefined, this);
+}
 function SendIcon() {
   return /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("svg", {
     width: "16",
@@ -24352,6 +24513,7 @@ function Chat({ session }) {
   const [streaming, setStreaming] = import_react.useState(false);
   const [streamText, setStreamText] = import_react.useState("");
   const [pendingExchange, setPendingExchange] = import_react.useState(null);
+  const [pendingForm, setPendingForm] = import_react.useState(null);
   const [showChanges, setShowChanges] = import_react.useState(false);
   const [changesCount, setChangesCount] = import_react.useState(0);
   const [error, setError] = import_react.useState("");
@@ -24363,31 +24525,38 @@ function Chat({ session }) {
     setStreamText("");
     setError("");
     setInput("");
+    setPendingForm(null);
     api.sessions.exchanges(session.id).then((exs) => {
       setExchanges(exs);
+      const lastEx = exs[exs.length - 1];
+      if (lastEx && (lastEx.runStatus === "completed" || lastEx.runStatus === "failed")) {
+        for (let i = lastEx.steps.length - 1;i >= 0; i--) {
+          const step = lastEx.steps[i];
+          if (step.data.type === "question_form") {
+            setPendingForm(step.data.form);
+            break;
+          }
+        }
+      }
       console.debug("[exchanges:load]", session.id, logExchanges(exs));
     });
     api.sessions.changes(session.id).then((c) => setChangesCount(c.length));
   }, [session.id]);
   import_react.useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [exchanges, streamText, pendingExchange]);
+  }, [exchanges, streamText, pendingExchange, pendingForm]);
   const handleInputChange = import_react.useCallback((e) => {
     setInput(e.target.value);
     e.target.style.height = "auto";
     e.target.style.height = Math.min(e.target.scrollHeight, 160) + "px";
   }, []);
-  const sendMessage = import_react.useCallback(async () => {
-    const content = input.trim();
+  const doSend = import_react.useCallback(async (content) => {
     if (!content || streaming)
       return;
-    setInput("");
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
     setError("");
     setStreaming(true);
     setStreamText("");
+    setPendingForm(null);
     const optimistic = {
       runId: "pending",
       runStatus: "running",
@@ -24440,6 +24609,8 @@ function Chat({ session }) {
         if (event.type === "text") {
           fullText += event.text;
           setStreamText(fullText);
+        } else if (event.type === "question_form") {
+          setPendingForm(event.form);
         }
       });
     } catch (err) {
@@ -24448,7 +24619,17 @@ function Chat({ session }) {
       if (!done)
         await finalize();
     }
-  }, [input, streaming, session.id]);
+  }, [streaming, session.id]);
+  const sendMessage = import_react.useCallback(async () => {
+    const content = input.trim();
+    if (!content)
+      return;
+    setInput("");
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
+    await doSend(content);
+  }, [input, doSend]);
   const handleKeyDown = import_react.useCallback((e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -24495,6 +24676,10 @@ function Chat({ session }) {
                 exchange: pendingExchange,
                 streamText
               }, undefined, false, undefined, this),
+              pendingForm && !streaming && /* @__PURE__ */ jsx_dev_runtime2.jsxDEV(QuestionFormWidget, {
+                form: pendingForm,
+                onSubmit: (answers) => doSend(formatFormAnswers(pendingForm, answers))
+              }, undefined, false, undefined, this),
               error && /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("div", {
                 style: { padding: "8px 20px", color: "var(--red)", fontSize: 12 },
                 children: error
@@ -24514,13 +24699,13 @@ function Chat({ session }) {
                 onChange: handleInputChange,
                 onKeyDown: handleKeyDown,
                 placeholder: "Message… (Enter to send, Shift+Enter for newline)",
-                disabled: streaming,
+                disabled: streaming || pendingForm !== null,
                 rows: 1
               }, undefined, false, undefined, this),
               /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("button", {
                 className: "send-btn",
                 onClick: sendMessage,
-                disabled: !input.trim() || streaming,
+                disabled: !input.trim() || streaming || pendingForm !== null,
                 children: /* @__PURE__ */ jsx_dev_runtime2.jsxDEV(SendIcon, {}, undefined, false, undefined, this)
               }, undefined, false, undefined, this)
             ]

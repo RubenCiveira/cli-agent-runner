@@ -40,6 +40,28 @@ export interface FileChange {
 export interface Skill { id: string; name: string; description: string; tags: string[] }
 export interface Agent { id: string; name: string; available: boolean; version: string | null; models: { id: string; label: string }[] }
 
+// ── QuestionForm types (mirrored from @runner/core for the browser bundle) ────
+
+export type QuestionType = 'text' | 'textarea' | 'radio' | 'checkbox'
+export interface QuestionOption { label: string; value: string }
+export interface FormQuestion {
+  id: string; label: string; type: QuestionType
+  options?: QuestionOption[]; maxSelections?: number
+  placeholder?: string; required?: boolean
+}
+export interface QuestionForm { id?: string; title?: string; questions: FormQuestion[] }
+export type FormAnswers = Record<string, string | string[]>
+
+export function formatFormAnswers(form: QuestionForm, answers: FormAnswers): string {
+  const header = form.id ? `[form answers — ${form.id}]` : '[form answers]'
+  const lines = form.questions.map((q) => {
+    const answer = answers[q.id]
+    const text = Array.isArray(answer) ? answer.join(', ') : (answer ?? '(skipped)')
+    return `- ${q.label}: ${text}`
+  })
+  return `${header}\n${lines.join('\n')}`
+}
+
 // ── AgentEvent types ──────────────────────────────────────────────────────────
 
 export type AgentEvent =
@@ -49,6 +71,7 @@ export type AgentEvent =
   | { type: 'done'; exitCode: number }
   | { type: 'raw'; data: string }
   | { type: 'tool_result' }
+  | { type: 'question_form'; form: QuestionForm }
 
 // ── SSE helpers ───────────────────────────────────────────────────────────────
 

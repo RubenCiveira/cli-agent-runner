@@ -1,3 +1,5 @@
+export type { QuestionForm, FormQuestion, QuestionOption, QuestionType, FormAnswers } from '../prompts/ask-user.ts'
+
 export interface ModelOption {
   id: string
   label: string
@@ -10,11 +12,14 @@ export interface RunOptions {
   externalSessionId?: string
 }
 
+import type { QuestionForm } from '../prompts/ask-user.ts'
+
 /** A single parsed event from the agent output stream */
 export type AgentEvent =
   | { type: 'text'; text: string }
   | { type: 'tool_use'; name: string; input: unknown }
   | { type: 'tool_result'; toolUseId: string; content: string }
+  | { type: 'question_form'; form: QuestionForm }
   | { type: 'error'; message: string }
   | { type: 'done'; exitCode: number }
   | { type: 'raw'; data: string }

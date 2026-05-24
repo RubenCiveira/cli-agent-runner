@@ -7,7 +7,8 @@
       "Bash(bun run *)",
       "Bash(bun -e ' *)",
       "Bash(bun add *)",
-      "Bash(bun build *)"
+      "Bash(bun build *)",
+      "WebFetch(domain:opencode.ai)"
     ]
   }
 }

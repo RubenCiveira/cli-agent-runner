@@ -787,6 +787,120 @@ html, body, #root {
   padding: 8px 12px;
 }
 
+.question-form {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 12px 20px;
+  padding: 16px;
+}
+
+.qf-title {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.qf-question {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.qf-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.qf-required {
+  color: var(--red);
+}
+
+.qf-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  outline: none;
+  font-size: 13px;
+  font-family: var(--font);
+  width: 100%;
+  padding: 7px 10px;
+  transition: border-color .15s;
+}
+
+.qf-input:focus {
+  border-color: var(--accent);
+}
+
+.qf-textarea {
+  resize: vertical;
+  min-height: 72px;
+}
+
+.qf-options {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.qf-option {
+  display: flex;
+  cursor: pointer;
+  color: var(--text);
+  user-select: none;
+  align-items:  center;
+  gap: 7px;
+  font-size: 13px;
+}
+
+.qf-option input[type="radio"], .qf-option input[type="checkbox"] {
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+}
+
+.qf-other-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  outline: none;
+  font-size: 12px;
+  font-family: var(--font);
+  flex: 1;
+  margin-left: 4px;
+  padding: 3px 8px;
+  transition: border-color .15s;
+}
+
+.qf-other-input:focus {
+  border-color: var(--accent);
+}
+
+.qf-submit {
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: none;
+  align-self:  flex-start;
+  padding: 7px 18px;
+  transition: opacity .15s;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.qf-submit:hover {
+  opacity: .85;
+}
+
 .modal-overlay {
   position: fixed;
   z-index: 200;

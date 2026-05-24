@@ -196,6 +196,24 @@ html, body, #root { height: 100%; overflow: hidden; background: var(--bg); color
 .diff-line.ctx { color: var(--text-muted) }
 .no-diff { padding: 8px 12px; font-size: 11px; color: var(--text-muted); font-family: var(--mono) }
 
+/* ── Question form ────────────────────────────────────────────────────────── */
+
+.question-form { margin: 12px 20px; padding: 16px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius); display: flex; flex-direction: column; gap: 14px }
+.qf-title { font-size: 13px; font-weight: 600; color: var(--text) }
+.qf-question { display: flex; flex-direction: column; gap: 6px }
+.qf-label { font-size: 12px; color: var(--text-muted); font-weight: 500 }
+.qf-required { color: var(--red) }
+.qf-input { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius-sm); padding: 7px 10px; font-size: 13px; outline: none; font-family: var(--font); width: 100%; transition: border-color .15s }
+.qf-input:focus { border-color: var(--accent) }
+.qf-textarea { min-height: 72px; resize: vertical }
+.qf-options { display: flex; flex-direction: column; gap: 5px }
+.qf-option { display: flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer; color: var(--text); user-select: none }
+.qf-option input[type="radio"], .qf-option input[type="checkbox"] { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; flex-shrink: 0 }
+.qf-other-input { margin-left: 4px; flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius-sm); padding: 3px 8px; font-size: 12px; outline: none; font-family: var(--font); transition: border-color .15s }
+.qf-other-input:focus { border-color: var(--accent) }
+.qf-submit { align-self: flex-start; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); padding: 7px 18px; font-size: 13px; font-weight: 500; cursor: pointer; transition: opacity .15s }
+.qf-submit:hover { opacity: .85 }
+
 /* ── Modal ────────────────────────────────────────────────────────────────── */
 
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px }

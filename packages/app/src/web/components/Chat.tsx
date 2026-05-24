@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { api } from '../api.ts'
-import type { Exchange, FileChange, Session, AgentEvent, RunEvent, EventData } from '../api.ts'
+import { api, formatFormAnswers } from '../api.ts'
+import type { Exchange, FileChange, Session, AgentEvent, RunEvent, EventData, QuestionForm, FormAnswers, FormQuestion } from '../api.ts'
 
 // ── Diff renderer ─────────────────────────────────────────────────────────────
 
@@ -266,6 +266,149 @@ function logExchanges(exchanges: Exchange[]) {
   }))
 }
 
+// ── Question form widget ──────────────────────────────────────────────────────
+
+const OTHER_VALUE = '__other__'
+
+function QuestionFormWidget({ form, onSubmit }: { form: QuestionForm; onSubmit: (answers: FormAnswers) => void }) {
+  const [answers, setAnswers] = useState<FormAnswers>({})
+  const [otherText, setOtherText] = useState<Record<string, string>>({})
+
+  const setTextAnswer = (id: string, val: string) => setAnswers((a) => ({ ...a, [id]: val }))
+
+  const toggleCheckbox = (id: string, value: string, maxSel?: number) => {
+    setAnswers((a) => {
+      const current = (a[id] as string[] | undefined) ?? []
+      if (current.includes(value)) return { ...a, [id]: current.filter((v) => v !== value) }
+      if (maxSel && current.length >= maxSel) return a
+      return { ...a, [id]: [...current, value] }
+    })
+  }
+
+  const handleSubmit = () => {
+    const final: FormAnswers = {}
+    for (const q of form.questions) {
+      if (q.type === 'text' || q.type === 'textarea') {
+        final[q.id] = (answers[q.id] as string | undefined) ?? ''
+      } else if (q.type === 'radio') {
+        const val = (answers[q.id] as string | undefined) ?? ''
+        final[q.id] = val === OTHER_VALUE ? (otherText[q.id] ?? '') : val
+      } else if (q.type === 'checkbox') {
+        const checked = (answers[q.id] as string[] | undefined) ?? []
+        final[q.id] = checked.map((v) => (v === OTHER_VALUE ? (otherText[q.id] ?? '') : v))
+      }
+    }
+    onSubmit(final)
+  }
+
+  return (
+    <div className="question-form">
+      {form.title && <div className="qf-title">{form.title}</div>}
+      {form.questions.map((q: FormQuestion) => (
+        <div key={q.id} className="qf-question">
+          <div className="qf-label">
+            {q.label}
+            {q.required && <span className="qf-required"> *</span>}
+          </div>
+
+          {q.type === 'text' && (
+            <input
+              className="qf-input"
+              type="text"
+              placeholder={q.placeholder ?? ''}
+              value={(answers[q.id] as string | undefined) ?? ''}
+              onChange={(e) => setTextAnswer(q.id, e.target.value)}
+            />
+          )}
+
+          {q.type === 'textarea' && (
+            <textarea
+              className="qf-input qf-textarea"
+              placeholder={q.placeholder ?? ''}
+              value={(answers[q.id] as string | undefined) ?? ''}
+              onChange={(e) => setTextAnswer(q.id, e.target.value)}
+            />
+          )}
+
+          {q.type === 'radio' && (
+            <div className="qf-options">
+              {(q.options ?? []).map((opt) => (
+                <label key={opt.value} className="qf-option">
+                  <input
+                    type="radio"
+                    name={q.id}
+                    value={opt.value}
+                    checked={(answers[q.id] as string | undefined) === opt.value}
+                    onChange={() => setAnswers((a) => ({ ...a, [q.id]: opt.value }))}
+                  />
+                  {opt.label}
+                </label>
+              ))}
+              <label className="qf-option">
+                <input
+                  type="radio"
+                  name={q.id}
+                  value={OTHER_VALUE}
+                  checked={(answers[q.id] as string | undefined) === OTHER_VALUE}
+                  onChange={() => setAnswers((a) => ({ ...a, [q.id]: OTHER_VALUE }))}
+                />
+                Other
+                {(answers[q.id] as string | undefined) === OTHER_VALUE && (
+                  <input
+                    className="qf-other-input"
+                    type="text"
+                    placeholder="Specify…"
+                    value={otherText[q.id] ?? ''}
+                    onChange={(e) => setOtherText((t) => ({ ...t, [q.id]: e.target.value }))}
+                    autoFocus
+                  />
+                )}
+              </label>
+            </div>
+          )}
+
+          {q.type === 'checkbox' && (
+            <div className="qf-options">
+              {(q.options ?? []).map((opt) => {
+                const checked = ((answers[q.id] as string[] | undefined) ?? []).includes(opt.value)
+                return (
+                  <label key={opt.value} className="qf-option">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleCheckbox(q.id, opt.value, q.maxSelections)}
+                    />
+                    {opt.label}
+                  </label>
+                )
+              })}
+              <label className="qf-option">
+                <input
+                  type="checkbox"
+                  checked={((answers[q.id] as string[] | undefined) ?? []).includes(OTHER_VALUE)}
+                  onChange={() => toggleCheckbox(q.id, OTHER_VALUE, q.maxSelections)}
+                />
+                Other
+                {((answers[q.id] as string[] | undefined) ?? []).includes(OTHER_VALUE) && (
+                  <input
+                    className="qf-other-input"
+                    type="text"
+                    placeholder="Specify…"
+                    value={otherText[q.id] ?? ''}
+                    onChange={(e) => setOtherText((t) => ({ ...t, [q.id]: e.target.value }))}
+                    autoFocus
+                  />
+                )}
+              </label>
+            </div>
+          )}
+        </div>
+      ))}
+      <button className="qf-submit" onClick={handleSubmit}>Submit</button>
+    </div>
+  )
+}
+
 // ── Send icon ─────────────────────────────────────────────────────────────────
 
 function SendIcon() {
@@ -288,6 +431,7 @@ export function Chat({ session }: ChatProps) {
   const [streaming, setStreaming] = useState(false)
   const [streamText, setStreamText] = useState('')
   const [pendingExchange, setPendingExchange] = useState<Exchange | null>(null)
+  const [pendingForm, setPendingForm] = useState<QuestionForm | null>(null)
   const [showChanges, setShowChanges] = useState(false)
   const [changesCount, setChangesCount] = useState(0)
   const [error, setError] = useState('')
@@ -300,8 +444,19 @@ export function Chat({ session }: ChatProps) {
     setStreamText('')
     setError('')
     setInput('')
+    setPendingForm(null)
     api.sessions.exchanges(session.id).then((exs) => {
       setExchanges(exs)
+      const lastEx = exs[exs.length - 1]
+      if (lastEx && (lastEx.runStatus === 'completed' || lastEx.runStatus === 'failed')) {
+        for (let i = lastEx.steps.length - 1; i >= 0; i--) {
+          const step = lastEx.steps[i]
+          if (step.data.type === 'question_form') {
+            setPendingForm(step.data.form as QuestionForm)
+            break
+          }
+        }
+      }
       console.debug('[exchanges:load]', session.id, logExchanges(exs))
     })
     api.sessions.changes(session.id).then((c) => setChangesCount(c.length))
@@ -309,7 +464,7 @@ export function Chat({ session }: ChatProps) {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [exchanges, streamText, pendingExchange])
+  }, [exchanges, streamText, pendingExchange, pendingForm])
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value)
@@ -317,15 +472,12 @@ export function Chat({ session }: ChatProps) {
     e.target.style.height = Math.min(e.target.scrollHeight, 160) + 'px'
   }, [])
 
-  const sendMessage = useCallback(async () => {
-    const content = input.trim()
+  const doSend = useCallback(async (content: string) => {
     if (!content || streaming) return
-
-    setInput('')
-    if (textareaRef.current) { textareaRef.current.style.height = 'auto' }
     setError('')
     setStreaming(true)
     setStreamText('')
+    setPendingForm(null)
 
     const optimistic: Exchange = {
       runId: 'pending',
@@ -377,6 +529,8 @@ export function Chat({ session }: ChatProps) {
         if (event.type === 'text') {
           fullText += event.text
           setStreamText(fullText)
+        } else if (event.type === 'question_form') {
+          setPendingForm(event.form)
         }
       })
     } catch (err) {
@@ -384,10 +538,18 @@ export function Chat({ session }: ChatProps) {
     } finally {
       if (!done) await finalize()
     }
-  }, [input, streaming, session.id])
+  }, [streaming, session.id])
+
+  const sendMessage = useCallback(async () => {
+    const content = input.trim()
+    if (!content) return
+    setInput('')
+    if (textareaRef.current) { textareaRef.current.style.height = 'auto' }
+    await doSend(content)
+  }, [input, doSend])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void sendMessage() }
   }, [sendMessage])
 
   return (
@@ -414,6 +576,12 @@ export function Chat({ session }: ChatProps) {
             .filter((ex) => ex.userMessage || ex.assistantMessage || ex.steps.length > 0)
             .map((ex) => <ExchangeTurn key={ex.runId} exchange={ex} />)}
           {pendingExchange && <ExchangeTurn exchange={pendingExchange} streamText={streamText} />}
+          {pendingForm && !streaming && (
+            <QuestionFormWidget
+              form={pendingForm}
+              onSubmit={(answers) => doSend(formatFormAnswers(pendingForm, answers))}
+            />
+          )}
           {error && (
             <div style={{ padding: '8px 20px', color: 'var(--red)', fontSize: 12 }}>{error}</div>
           )}
@@ -428,10 +596,10 @@ export function Chat({ session }: ChatProps) {
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             placeholder="Message… (Enter to send, Shift+Enter for newline)"
-            disabled={streaming}
+            disabled={streaming || pendingForm !== null}
             rows={1}
           />
-          <button className="send-btn" onClick={sendMessage} disabled={!input.trim() || streaming}>
+          <button className="send-btn" onClick={sendMessage} disabled={!input.trim() || streaming || pendingForm !== null}>
             <SendIcon />
           </button>
         </div>

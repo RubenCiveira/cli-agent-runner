@@ -1,5 +1,23 @@
 import type { RuntimeAgent, AgentInvokeParams, DetectedAgent, AgentEvent, ModelOption } from '../types.ts'
 import { spawnCli, runOneShot, readLines } from '../cli/index.ts'
+import { splitOnQuestionForms, hasQuestionForm } from '../../prompts/ask-user.ts'
+
+// ── Question-form expansion ───────────────────────────────────────────────────
+
+/**
+ * If `text` contains one or more <question-form> blocks, expand it into a
+ * sequence of text and question_form events.  Otherwise return a single text
+ * event unchanged.
+ */
+function expandTextEvent(text: string): AgentEvent[] {
+  if (!hasQuestionForm(text)) return [{ type: 'text', text }]
+
+  return splitOnQuestionForms(text).map((seg) =>
+    seg.kind === 'form'
+      ? ({ type: 'question_form', form: seg.form } satisfies AgentEvent)
+      : ({ type: 'text', text: seg.content } satisfies AgentEvent),
+  )
+}
 
 // ── Event parsing ─────────────────────────────────────────────────────────────
 
@@ -8,7 +26,7 @@ function parseEvents(line: string): AgentEvent[] {
   try {
     obj = JSON.parse(line) as Record<string, unknown>
   } catch {
-    return line.trim() ? [{ type: 'text', text: line }] : []
+    return line.trim() ? expandTextEvent(line) : []
   }
 
   // { type: "message", role: "assistant", parts: [{type:"text",...}, {type:"tool-invocation",...}] }
@@ -17,7 +35,7 @@ function parseEvents(line: string): AgentEvent[] {
     const events: AgentEvent[] = []
     for (const part of obj.parts as Record<string, unknown>[]) {
       if (part.type === 'text' && typeof part.text === 'string' && part.text) {
-        events.push({ type: 'text', text: part.text })
+        events.push(...expandTextEvent(part.text))
       } else if (part.type === 'tool-invocation') {
         const ti = part.toolInvocation as Record<string, unknown> | undefined
         if (!ti) continue
@@ -36,7 +54,7 @@ function parseEvents(line: string): AgentEvent[] {
   if (obj.type === 'message' && typeof obj.part === 'object' && obj.part !== null && !Array.isArray(obj.parts)) {
     const part = obj.part as Record<string, unknown>
     if (part.type === 'text' && typeof part.text === 'string' && part.text) {
-      return [{ type: 'text', text: part.text }]
+      return expandTextEvent(part.text)
     }
   }
 
@@ -47,7 +65,7 @@ function parseEvents(line: string): AgentEvent[] {
       const events: AgentEvent[] = []
       for (const block of msg.content as Record<string, unknown>[]) {
         if (block.type === 'text' && typeof block.text === 'string' && block.text) {
-          events.push({ type: 'text', text: block.text })
+          events.push(...expandTextEvent(block.text))
         } else if (block.type === 'tool_use' && typeof block.name === 'string') {
           events.push({ type: 'tool_use', name: block.name, input: block.input })
         } else if (block.type === 'tool_result') {
@@ -66,7 +84,7 @@ function parseEvents(line: string): AgentEvent[] {
   if (obj.type === 'text' && typeof obj.part === 'object' && obj.part !== null) {
     const part = obj.part as Record<string, unknown>
     if (typeof part.text === 'string' && part.text) {
-      return [{ type: 'text', text: part.text }]
+      return expandTextEvent(part.text)
     }
   }
 
@@ -86,7 +104,7 @@ function parseEvents(line: string): AgentEvent[] {
   }
 
   // Flat types
-  if (typeof obj.text === 'string' && obj.text) return [{ type: 'text', text: obj.text }]
+  if (typeof obj.text === 'string' && obj.text) return expandTextEvent(obj.text)
   if (obj.type === 'tool_use' && typeof obj.name === 'string') return [{ type: 'tool_use', name: obj.name, input: obj.input }]
   if (obj.type === 'tool_result') return [{ type: 'tool_result', toolUseId: String(obj.tool_use_id ?? ''), content: String(obj.content ?? '') }]
   if (obj.type === 'error' || obj.error) return [{ type: 'error', message: String(obj.message ?? obj.error ?? line) }]
