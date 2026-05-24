@@ -5,11 +5,54 @@ export interface ModelOption {
   label: string
 }
 
+export interface McpServerConfig {
+  /** Unique identifier used as the MCP server key */
+  id: string
+  /** stdio command + args, e.g. ["npx", "-y", "@modelcontextprotocol/server-github"] */
+  command: [string, ...string[]]
+  /** Environment variables injected into the MCP server process */
+  env?: Record<string, string>
+}
+
+export interface AgentFileConfig {
+  /** Display name (used as a header in the injected prompt) */
+  name: string
+  /** Full markdown/text content of the agent definition */
+  content: string
+}
+
+export interface SkillConfig {
+  /** Display name */
+  name: string
+  /** Full markdown/text content of the skill */
+  content: string
+}
+
+export interface ContextFileConfig {
+  /** Filename shown as a header (e.g. "Design.md") */
+  name: string
+  /** Full text content */
+  content: string
+}
+
+export interface WorkspaceResources {
+  /** MCP servers to inject into the runner */
+  mcps?: McpServerConfig[]
+  /** Agent definition files to prepend to the prompt */
+  agents?: AgentFileConfig[]
+  /** Skill documents to prepend to the prompt */
+  skills?: SkillConfig[]
+  /** Arbitrary context files (e.g. Design.md) to prepend to the prompt */
+  contextFiles?: ContextFileConfig[]
+}
+
 export interface RunOptions {
   model?: string
   env?: Record<string, string>
   /** Agent's native session ID — passed back when resuming an existing session */
   externalSessionId?: string
+  /** Workspace-level resources: MCPs, agents, skills, context files */
+  resources?: WorkspaceResources
 }
 
 import type { QuestionForm } from '../prompts/ask-user.ts'

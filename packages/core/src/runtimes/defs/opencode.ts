@@ -1,6 +1,57 @@
-import type { RuntimeAgent, AgentInvokeParams, DetectedAgent, AgentEvent, ModelOption } from '../types.ts'
+import type { RuntimeAgent, AgentInvokeParams, DetectedAgent, AgentEvent, ModelOption, McpServerConfig, WorkspaceResources } from '../types.ts'
 import { spawnCli, runOneShot, readLines } from '../cli/index.ts'
 import { splitOnQuestionForms, hasQuestionForm } from '../../prompts/ask-user.ts'
+
+// ── Resource injection helpers ────────────────────────────────────────────────
+
+/**
+ * Serialise workspace MCPs into the JSON string that opencode expects in
+ * OPENCODE_CONFIG_CONTENT.  Returns null when there are no servers so the
+ * caller can leave the env var unset and let opencode read the user's own
+ * global config untouched.
+ *
+ * Schema per https://opencode.ai/docs/mcp-servers:
+ *   { "mcp": { "<id>": { "type": "local", "command": [...], "environment": {...}, "enabled": true } } }
+ */
+function buildOpenCodeConfigContent(mcps: McpServerConfig[]): string | null {
+  if (mcps.length === 0) return null
+  const mcp: Record<string, unknown> = {}
+  for (const s of mcps) {
+    const entry: Record<string, unknown> = {
+      type: 'local',
+      command: s.command,
+      enabled: true,
+    }
+    if (s.env && Object.keys(s.env).length > 0) {
+      entry.environment = s.env
+    }
+    mcp[s.id] = entry
+  }
+  return JSON.stringify({ mcp })
+}
+
+/**
+ * Build the prefix that gets prepended to the user prompt via stdin.
+ * Each section is fenced so the model can distinguish agent instructions,
+ * skills, and context files from the actual user request.
+ */
+function buildResourcePrefix(resources: WorkspaceResources): string {
+  const parts: string[] = []
+
+  for (const agent of resources.agents ?? []) {
+    parts.push(`<agent name="${agent.name}">\n${agent.content}\n</agent>`)
+  }
+
+  for (const skill of resources.skills ?? []) {
+    parts.push(`<skill name="${skill.name}">\n${skill.content}\n</skill>`)
+  }
+
+  for (const ctx of resources.contextFiles ?? []) {
+    parts.push(`<context file="${ctx.name}">\n${ctx.content}\n</context>`)
+  }
+
+  return parts.length > 0 ? parts.join('\n\n') + '\n\n' : ''
+}
 
 // ── Question-form expansion ───────────────────────────────────────────────────
 
@@ -210,10 +261,19 @@ class OpenCodeAgent implements RuntimeAgent {
 
     const env = { ...(Bun.env as Record<string, string>), ...(options.env ?? {}) }
 
+    const resources = options.resources
+    if (resources?.mcps?.length) {
+      const configContent = buildOpenCodeConfigContent(resources.mcps)
+      if (configContent) env['OPENCODE_CONFIG_CONTENT'] = configContent
+    }
+
+    const prefix = resources ? buildResourcePrefix(resources) : ''
+    const payload = prefix ? prefix + stdinPayload : stdinPayload
+
     let proc: ReturnType<typeof spawnCli> | null = null
     for (const bin of this.bins) {
       try {
-        proc = spawnCli(bin, args, stdinPayload, { cwd, env })
+        proc = spawnCli(bin, args, payload, { cwd, env })
         break
       } catch { /* try next */ }
     }
