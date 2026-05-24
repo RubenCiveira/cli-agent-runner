@@ -6,11 +6,13 @@ import { createHash } from 'node:crypto'
 export type ChangeType = 'added' | 'modified' | 'deleted'
 
 export interface FileChange {
-  /** Path relative to the project root */
+  /** Path relative to the project root, or absolute if external is true */
   path: string
   type: ChangeType
   /** Unified diff string for text files; null for binary or files exceeding the size limit */
   diff: string | null
+  /** True when the changed file lives outside the project root */
+  external: boolean
 }
 
 // ── Configuration ─────────────────────────────────────────────────────────────
@@ -56,15 +58,15 @@ function isTextBuffer(buf: Buffer): boolean {
   return true
 }
 
-async function walkDir(root: string, result: Snapshot): Promise<void> {
-  const entries = await readdir(root, { withFileTypes: true })
+async function walkDir(projectRoot: string, dir: string, result: Snapshot): Promise<void> {
+  const entries = await readdir(dir, { withFileTypes: true })
   await Promise.all(
     entries.map(async (entry) => {
-      const full = path.join(root, entry.name)
-      const rel = path.relative(root, full)
+      const full = path.join(dir, entry.name)
+      const rel = path.relative(projectRoot, full)
       if (isExcluded(rel)) return
       if (entry.isDirectory()) {
-        await walkDir(full, result)
+        await walkDir(projectRoot, full, result)
       } else if (entry.isFile()) {
         const content = await readFile(full)
         result.set(rel, { hash: sha1(content), content })
@@ -82,7 +84,7 @@ async function walkDir(root: string, result: Snapshot): Promise<void> {
 export async function takeSnapshot(root: string): Promise<Snapshot> {
   const snapshot: Snapshot = new Map()
   if (!existsSync(root)) return snapshot
-  await walkDir(root, snapshot)
+  await walkDir(root, root, snapshot)
   return snapshot
 }
 
@@ -95,22 +97,22 @@ export async function computeChanges(
   before: Snapshot,
 ): Promise<FileChange[]> {
   const after: Snapshot = new Map()
-  if (existsSync(root)) await walkDir(root, after)
+  if (existsSync(root)) await walkDir(root, root, after)
 
   const changes: FileChange[] = []
 
   for (const [rel, bEntry] of before) {
     const aEntry = after.get(rel)
     if (!aEntry) {
-      changes.push({ path: rel, type: 'deleted', diff: buildDeletedDiff(rel, bEntry) })
+      changes.push({ path: rel, type: 'deleted', diff: buildDeletedDiff(rel, bEntry), external: false })
     } else if (aEntry.hash !== bEntry.hash) {
-      changes.push({ path: rel, type: 'modified', diff: buildDiff(rel, bEntry, aEntry) })
+      changes.push({ path: rel, type: 'modified', diff: buildDiff(rel, bEntry, aEntry), external: false })
     }
   }
 
   for (const [rel, aEntry] of after) {
     if (!before.has(rel)) {
-      changes.push({ path: rel, type: 'added', diff: buildAddedDiff(rel, aEntry) })
+      changes.push({ path: rel, type: 'added', diff: buildAddedDiff(rel, aEntry), external: false })
     }
   }
 

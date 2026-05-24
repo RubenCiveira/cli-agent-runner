@@ -718,7 +718,7 @@ html, body, #root {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   overflow: hidden;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .change-file-header {
@@ -726,14 +726,70 @@ html, body, #root {
   background: var(--bg-active);
   font-size: 11px;
   font-family: var(--mono);
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  border: none;
   align-items:  center;
-  gap: 8px;
-  padding: 7px 12px;
+  gap: 7px;
+  width: 100%;
+  padding: 6px 10px;
+  transition: background .1s;
 }
 
-.change-file-header .change-path {
+.change-file-header:hover {
+  background: var(--bg-hover);
+}
+
+.change-file-arrow {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  width: 10px;
+  font-size: 10px;
+}
+
+.change-type-badge {
+  flex-shrink: 0;
+  font-weight: 700;
+}
+
+.change-path {
   color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   flex: 1;
+}
+
+.change-external-badge {
+  color: var(--yellow);
+  font-size: 9px;
+  font-family: var(--font);
+  vertical-align: middle;
+  background: #d2992233;
+  border-radius: 3px;
+  margin-left: 6px;
+  padding: 1px 5px;
+}
+
+.change-run-count {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  font-size: 10px;
+}
+
+.change-file-body {
+  border-top: 1px solid var(--border);
+}
+
+.change-run-divider {
+  background: var(--bg);
+  font-size: 10px;
+  font-family: var(--mono);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items:  center;
+  padding: 4px 10px;
 }
 
 .badge-added {

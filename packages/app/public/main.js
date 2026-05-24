@@ -23974,11 +23974,26 @@ function DiffView({ diff }) {
 function ChangesPanel({ sessionId, onClose }) {
   const [changes, setChanges] = import_react.useState([]);
   const [loading, setLoading] = import_react.useState(true);
+  const [openPaths, setOpenPaths] = import_react.useState(new Set);
   import_react.useEffect(() => {
     api.sessions.changes(sessionId).then(setChanges).finally(() => setLoading(false));
   }, [sessionId]);
+  const togglePath = (p) => setOpenPaths((prev) => {
+    const next = new Set(prev);
+    next.has(p) ? next.delete(p) : next.add(p);
+    return next;
+  });
+  const grouped = new Map;
+  for (const c of changes) {
+    const existing = grouped.get(c.path);
+    if (existing)
+      existing.push(c);
+    else
+      grouped.set(c.path, [c]);
+  }
   const BADGE = { added: "badge-added", modified: "badge-modified", deleted: "badge-deleted" };
-  const SYM = { added: "+", modified: "~", deleted: "-" };
+  const SYM = { added: "+", modified: "~", deleted: "−" };
+  const TYPE_ORDER = { deleted: 0, modified: 1, added: 2 };
   return /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("div", {
     className: "changes-overlay",
     onClick: (e) => e.target === e.currentTarget && onClose(),
@@ -23989,8 +24004,20 @@ function ChangesPanel({ sessionId, onClose }) {
           className: "changes-panel-header",
           children: [
             /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("h2", {
-              children: "File changes"
-            }, undefined, false, undefined, this),
+              children: [
+                "File changes ",
+                /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("span", {
+                  style: { fontWeight: 400, fontSize: 12, color: "var(--text-muted)" },
+                  children: [
+                    "(",
+                    grouped.size,
+                    " file",
+                    grouped.size !== 1 ? "s" : "",
+                    ")"
+                  ]
+                }, undefined, true, undefined, this)
+              ]
+            }, undefined, true, undefined, this),
             /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("button", {
               className: "btn-icon",
               onClick: onClose,
@@ -24006,34 +24033,86 @@ function ChangesPanel({ sessionId, onClose }) {
               style: { color: "var(--text-muted)", fontSize: 12 },
               children: "Loading…"
             }, undefined, false, undefined, this),
-            !loading && changes.length === 0 && /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("p", {
+            !loading && grouped.size === 0 && /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("p", {
               style: { color: "var(--text-muted)", fontSize: 12 },
               children: "No file changes recorded for this session."
             }, undefined, false, undefined, this),
-            changes.map((c) => /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("div", {
-              className: "change-file",
-              children: [
-                /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("div", {
-                  className: "change-file-header",
-                  children: [
-                    /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("span", {
-                      className: BADGE[c.change_type],
-                      children: SYM[c.change_type]
-                    }, undefined, false, undefined, this),
-                    /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("span", {
-                      className: "change-path",
-                      children: c.path
-                    }, undefined, false, undefined, this)
-                  ]
-                }, undefined, true, undefined, this),
-                c.diff ? /* @__PURE__ */ jsx_dev_runtime2.jsxDEV(DiffView, {
-                  diff: c.diff
-                }, undefined, false, undefined, this) : /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("p", {
-                  className: "no-diff",
-                  children: "No diff available"
-                }, undefined, false, undefined, this)
-              ]
-            }, c.id, true, undefined, this))
+            [...grouped.entries()].map(([filePath, entries]) => {
+              const isOpen = openPaths.has(filePath);
+              const dominant = entries.reduce((best, c) => (TYPE_ORDER[c.change_type] ?? 99) < (TYPE_ORDER[best.change_type] ?? 99) ? c : best);
+              const isExternal = entries[0].external !== 0;
+              return /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("div", {
+                className: "change-file",
+                children: [
+                  /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("button", {
+                    className: "change-file-header",
+                    onClick: () => togglePath(filePath),
+                    children: [
+                      /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("span", {
+                        className: "change-file-arrow",
+                        children: isOpen ? "▾" : "▸"
+                      }, undefined, false, undefined, this),
+                      /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("span", {
+                        className: `change-type-badge ${BADGE[dominant.change_type]}`,
+                        children: SYM[dominant.change_type]
+                      }, undefined, false, undefined, this),
+                      /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("span", {
+                        className: "change-path",
+                        children: [
+                          filePath,
+                          isExternal && /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("span", {
+                            className: "change-external-badge",
+                            children: "external"
+                          }, undefined, false, undefined, this)
+                        ]
+                      }, undefined, true, undefined, this),
+                      entries.length > 1 && /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("span", {
+                        className: "change-run-count",
+                        children: [
+                          entries.length,
+                          " runs"
+                        ]
+                      }, undefined, true, undefined, this)
+                    ]
+                  }, undefined, true, undefined, this),
+                  isOpen && /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("div", {
+                    className: "change-file-body",
+                    children: entries.map((c, i) => /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("div", {
+                      children: [
+                        entries.length > 1 && /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("div", {
+                          className: "change-run-divider",
+                          children: [
+                            /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("span", {
+                              className: BADGE[c.change_type],
+                              children: [
+                                SYM[c.change_type],
+                                " ",
+                                c.change_type
+                              ]
+                            }, undefined, true, undefined, this),
+                            /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("span", {
+                              style: { color: "var(--text-muted)", marginLeft: 6, fontSize: 10 },
+                              children: [
+                                "run ",
+                                i + 1,
+                                "/",
+                                entries.length
+                              ]
+                            }, undefined, true, undefined, this)
+                          ]
+                        }, undefined, true, undefined, this),
+                        c.diff ? /* @__PURE__ */ jsx_dev_runtime2.jsxDEV(DiffView, {
+                          diff: c.diff
+                        }, undefined, false, undefined, this) : /* @__PURE__ */ jsx_dev_runtime2.jsxDEV("p", {
+                          className: "no-diff",
+                          children: "No diff available"
+                        }, undefined, false, undefined, this)
+                      ]
+                    }, c.id, true, undefined, this))
+                  }, undefined, false, undefined, this)
+                ]
+              }, filePath, true, undefined, this);
+            })
           ]
         }, undefined, true, undefined, this)
       ]

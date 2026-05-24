@@ -34,7 +34,10 @@ export interface Exchange {
 export interface FileChange {
   id: number; run_id: string; session_id: string
   path: string; change_type: 'added' | 'modified' | 'deleted'
-  diff: string | null; created_at: number
+  diff: string | null
+  /** 0 = inside project root (relative path); 1 = outside project root (absolute path) */
+  external: number
+  created_at: number
 }
 
 export interface Skill { id: string; name: string; description: string; tags: string[] }

@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
     "@runner/core": "workspace:*",
     "commander": "^12.1.0",
     "hono": "^4.7.10",

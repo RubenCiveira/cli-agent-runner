@@ -24,35 +24,81 @@ function DiffView({ diff }: { diff: string }) {
 function ChangesPanel({ sessionId, onClose }: { sessionId: string; onClose: () => void }) {
   const [changes, setChanges] = useState<FileChange[]>([])
   const [loading, setLoading] = useState(true)
+  const [openPaths, setOpenPaths] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     api.sessions.changes(sessionId).then(setChanges).finally(() => setLoading(false))
   }, [sessionId])
 
+  const togglePath = (p: string) =>
+    setOpenPaths((prev) => {
+      const next = new Set(prev)
+      next.has(p) ? next.delete(p) : next.add(p)
+      return next
+    })
+
+  // Group changes by file path, preserving insertion order
+  const grouped = new Map<string, FileChange[]>()
+  for (const c of changes) {
+    const existing = grouped.get(c.path)
+    if (existing) existing.push(c)
+    else grouped.set(c.path, [c])
+  }
+
   const BADGE: Record<string, string> = { added: 'badge-added', modified: 'badge-modified', deleted: 'badge-deleted' }
-  const SYM: Record<string, string> = { added: '+', modified: '~', deleted: '-' }
+  const SYM: Record<string, string> = { added: '+', modified: '~', deleted: '−' }
+  const TYPE_ORDER: Record<string, number> = { deleted: 0, modified: 1, added: 2 }
 
   return (
     <div className="changes-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="changes-panel">
         <div className="changes-panel-header">
-          <h2>File changes</h2>
+          <h2>File changes <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--text-muted)' }}>({grouped.size} file{grouped.size !== 1 ? 's' : ''})</span></h2>
           <button className="btn-icon" onClick={onClose} style={{ fontSize: 16 }}>✕</button>
         </div>
         <div className="changes-panel-body">
           {loading && <p style={{ color: 'var(--text-muted)', fontSize: 12 }}>Loading…</p>}
-          {!loading && changes.length === 0 && (
+          {!loading && grouped.size === 0 && (
             <p style={{ color: 'var(--text-muted)', fontSize: 12 }}>No file changes recorded for this session.</p>
           )}
-          {changes.map((c) => (
-            <div key={c.id} className="change-file">
-              <div className="change-file-header">
-                <span className={BADGE[c.change_type]}>{SYM[c.change_type]}</span>
-                <span className="change-path">{c.path}</span>
+          {[...grouped.entries()].map(([filePath, entries]) => {
+            const isOpen = openPaths.has(filePath)
+            // Dominant change type for badge: deleted > modified > added
+            const dominant = entries.reduce((best, c) =>
+              (TYPE_ORDER[c.change_type] ?? 99) < (TYPE_ORDER[best.change_type] ?? 99) ? c : best
+            )
+            const isExternal = entries[0].external !== 0
+            return (
+              <div key={filePath} className="change-file">
+                <button className="change-file-header" onClick={() => togglePath(filePath)}>
+                  <span className="change-file-arrow">{isOpen ? '▾' : '▸'}</span>
+                  <span className={`change-type-badge ${BADGE[dominant.change_type]}`}>{SYM[dominant.change_type]}</span>
+                  <span className="change-path">
+                    {filePath}
+                    {isExternal && <span className="change-external-badge">external</span>}
+                  </span>
+                  {entries.length > 1 && (
+                    <span className="change-run-count">{entries.length} runs</span>
+                  )}
+                </button>
+                {isOpen && (
+                  <div className="change-file-body">
+                    {entries.map((c, i) => (
+                      <div key={c.id}>
+                        {entries.length > 1 && (
+                          <div className="change-run-divider">
+                            <span className={BADGE[c.change_type]}>{SYM[c.change_type]} {c.change_type}</span>
+                            <span style={{ color: 'var(--text-muted)', marginLeft: 6, fontSize: 10 }}>run {i + 1}/{entries.length}</span>
+                          </div>
+                        )}
+                        {c.diff ? <DiffView diff={c.diff} /> : <p className="no-diff">No diff available</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              {c.diff ? <DiffView diff={c.diff} /> : <p className="no-diff">No diff available</p>}
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </div>

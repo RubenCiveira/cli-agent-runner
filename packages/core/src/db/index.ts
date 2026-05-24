@@ -71,6 +71,8 @@ export interface StoredFileChange {
   path: string
   change_type: 'added' | 'modified' | 'deleted'
   diff: string | null
+  /** 0 = inside project root (path is relative); 1 = outside project root (path is absolute) */
+  external: number
   created_at: number
 }
 
@@ -131,6 +133,7 @@ CREATE TABLE IF NOT EXISTS file_changes (
   path        TEXT NOT NULL,
   change_type TEXT NOT NULL,
   diff        TEXT,
+  external    INTEGER NOT NULL DEFAULT 0,
   created_at  INTEGER NOT NULL
 );
 
@@ -169,11 +172,13 @@ function runMigrations(db: Database): void {
       path        TEXT NOT NULL,
       change_type TEXT NOT NULL,
       diff        TEXT,
+      external    INTEGER NOT NULL DEFAULT 0,
       created_at  INTEGER NOT NULL
     )`)
     db.exec('CREATE INDEX IF NOT EXISTS idx_file_changes_run ON file_changes(run_id)')
     db.exec('CREATE INDEX IF NOT EXISTS idx_file_changes_session ON file_changes(session_id)')
   } catch {}
+  try { db.exec('ALTER TABLE file_changes ADD COLUMN external INTEGER NOT NULL DEFAULT 0') } catch {}
 }
 
 // ── Projects ──────────────────────────────────────────────────────────────────
@@ -422,12 +427,12 @@ export function saveFileChanges(
 ): void {
   const now = Date.now()
   const insert = db.prepare(
-    `INSERT INTO file_changes (run_id, session_id, path, change_type, diff, created_at)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO file_changes (run_id, session_id, path, change_type, diff, external, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
   )
   const insertAll = db.transaction((rows: FileChange[]) => {
     for (const c of rows) {
-      insert.run(runId, sessionId, c.path, c.type, c.diff ?? null, now)
+      insert.run(runId, sessionId, c.path, c.type, c.diff ?? null, c.external ? 1 : 0, now)
     }
   })
   insertAll(changes)
