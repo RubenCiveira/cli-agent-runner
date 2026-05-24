@@ -33,6 +33,14 @@ export interface SeedResult {
   errors: string[]
 }
 
+function extractFrontmatterField(content: string, field: string): string | null {
+  const match = /^---\n([\s\S]*?)\n---/.exec(content)
+  if (!match) return null
+  const line = match[1].split('\n').find((l) => l.startsWith(`${field}:`))
+  if (!line) return null
+  return line.slice(field.length + 1).trim() || null
+}
+
 function slugify(filename: string): string {
   return path.basename(filename, path.extname(filename))
     .toLowerCase()
@@ -109,10 +117,13 @@ export async function seedFromDirectory(
   // ── Context files ─────────────────────────────────────────────────────────────
   for (const file of await readDir(path.join(initDir, 'contexts'), ['.md', '.txt', '.yaml', '.json'])) {
     try {
-      const content = await readFile(file, 'utf8')
+      const raw = await readFile(file, 'utf8')
       const id = slugify(file)
       const name = path.basename(file)
-      upsertContextFile(db, { id, name, content })
+      const type = extractFrontmatterField(raw, 'type') ?? undefined
+      // Strip frontmatter from content stored in DB
+      const content = raw.replace(/^---\n[\s\S]*?\n---\n?/, '')
+      upsertContextFile(db, { id, name, type, content })
       result.contextFiles++
     } catch (e) {
       result.errors.push(`context ${file}: ${(e as Error).message}`)

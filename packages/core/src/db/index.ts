@@ -110,6 +110,8 @@ export interface ContextFile {
   id: string
   /** Display filename, e.g. "Design.md" */
   name: string
+  /** Optional category, e.g. "Design". Only one context of each type can be assigned per project. */
+  type: string | null
   content: string
   created_at: number
   updated_at: number
@@ -219,6 +221,7 @@ CREATE TABLE IF NOT EXISTS mcp_servers (
 CREATE TABLE IF NOT EXISTS context_files (
   id         TEXT PRIMARY KEY,
   name       TEXT NOT NULL UNIQUE,
+  type       TEXT,
   content    TEXT NOT NULL,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
@@ -246,8 +249,12 @@ CREATE TABLE IF NOT EXISTS project_mcps (
 CREATE TABLE IF NOT EXISTS project_context_files (
   project_id      TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
   context_file_id TEXT NOT NULL REFERENCES context_files(id) ON DELETE CASCADE,
+  context_type    TEXT,
   PRIMARY KEY (project_id, context_file_id)
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_project_context_type
+  ON project_context_files(project_id, context_type) WHERE context_type IS NOT NULL;
 `
 
 let _db: Database | null = null
@@ -294,6 +301,11 @@ function runMigrations(db: Database): void {
     db.exec(`CREATE TABLE IF NOT EXISTS project_skills (project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE, skill_id TEXT NOT NULL REFERENCES skills(id) ON DELETE CASCADE, PRIMARY KEY (project_id, skill_id))`)
     db.exec(`CREATE TABLE IF NOT EXISTS project_mcps (project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE, mcp_id TEXT NOT NULL REFERENCES mcp_servers(id) ON DELETE CASCADE, env_override TEXT, PRIMARY KEY (project_id, mcp_id))`)
     db.exec(`CREATE TABLE IF NOT EXISTS project_context_files (project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE, context_file_id TEXT NOT NULL REFERENCES context_files(id) ON DELETE CASCADE, PRIMARY KEY (project_id, context_file_id))`)
+  } catch {}
+  try { db.exec('ALTER TABLE context_files ADD COLUMN type TEXT') } catch {}
+  try {
+    db.exec('ALTER TABLE project_context_files ADD COLUMN context_type TEXT')
+    db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_project_context_type ON project_context_files(project_id, context_type) WHERE context_type IS NOT NULL')
   } catch {}
 }
 
@@ -665,13 +677,14 @@ export function deleteMcpServer(db: Database, id: string): void {
 
 export function upsertContextFile(
   db: Database,
-  params: { id: string; name: string; content: string },
+  params: { id: string; name: string; type?: string; content: string },
 ): ContextFile {
   const now = Date.now()
+  const type = params.type ?? null
   db.run(
-    `INSERT INTO context_files (id, name, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?)
-     ON CONFLICT(id) DO UPDATE SET name = excluded.name, content = excluded.content, updated_at = excluded.updated_at`,
-    [params.id, params.name, params.content, now, now],
+    `INSERT INTO context_files (id, name, type, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET name = excluded.name, type = excluded.type, content = excluded.content, updated_at = excluded.updated_at`,
+    [params.id, params.name, type, params.content, now, now],
   )
   return db.query<ContextFile, string>('SELECT * FROM context_files WHERE id = ?').get(params.id)!
 }
@@ -720,24 +733,52 @@ export function getProjectSkills(db: Database, projectId: string): Skill[] {
   ).all(projectId)
 }
 
-export function setProjectContextFiles(
-  db: Database,
-  projectId: string,
-  contextFileIds: string[],
-): void {
-  db.run('DELETE FROM project_context_files WHERE project_id = ?', [projectId])
-  const insert = db.prepare(
-    'INSERT OR IGNORE INTO project_context_files (project_id, context_file_id) VALUES (?, ?)',
-  )
-  const run = db.transaction(() => { for (const id of contextFileIds) insert.run(projectId, id) })
-  run()
+/**
+ * Assign a context file to a project.
+ * If the file has a type, any previously assigned file of that type is replaced.
+ * If the file has no type, it is added without affecting other assignments.
+ */
+export function assignProjectContextFile(db: Database, projectId: string, contextFileId: string): void {
+  const file = db.query<Pick<ContextFile, 'type'>, string>('SELECT type FROM context_files WHERE id = ?').get(contextFileId)
+  if (!file) throw new Error(`Context file not found: ${contextFileId}`)
+  db.transaction(() => {
+    if (file.type) {
+      db.run('DELETE FROM project_context_files WHERE project_id = ? AND context_type = ?', [projectId, file.type])
+    }
+    db.run(
+      'INSERT OR IGNORE INTO project_context_files (project_id, context_file_id, context_type) VALUES (?, ?, ?)',
+      [projectId, contextFileId, file.type],
+    )
+  })()
+}
+
+export function unassignProjectContextFile(db: Database, projectId: string, contextFileId: string): void {
+  db.run('DELETE FROM project_context_files WHERE project_id = ? AND context_file_id = ?', [projectId, contextFileId])
+}
+
+/** Replace all context file assignments for a project. Type-uniqueness is enforced: last write per type wins. */
+export function setProjectContextFiles(db: Database, projectId: string, contextFileIds: string[]): void {
+  db.transaction(() => {
+    db.run('DELETE FROM project_context_files WHERE project_id = ?', [projectId])
+    for (const id of contextFileIds) {
+      const file = db.query<Pick<ContextFile, 'type'>, string>('SELECT type FROM context_files WHERE id = ?').get(id)
+      if (!file) continue
+      if (file.type) {
+        db.run('DELETE FROM project_context_files WHERE project_id = ? AND context_type = ?', [projectId, file.type])
+      }
+      db.run(
+        'INSERT OR IGNORE INTO project_context_files (project_id, context_file_id, context_type) VALUES (?, ?, ?)',
+        [projectId, id, file.type],
+      )
+    }
+  })()
 }
 
 export function getProjectContextFiles(db: Database, projectId: string): ContextFile[] {
   return db.query<ContextFile, string>(
     `SELECT cf.* FROM context_files cf
      JOIN project_context_files pcf ON pcf.context_file_id = cf.id
-     WHERE pcf.project_id = ? ORDER BY cf.name ASC`,
+     WHERE pcf.project_id = ? ORDER BY cf.type ASC, cf.name ASC`,
   ).all(projectId)
 }
 
