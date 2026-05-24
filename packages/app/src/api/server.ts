@@ -26,6 +26,35 @@ import {
   getExchanges,
   getFileChangesForRun,
   getFileChangesForSession,
+  // resources
+  listAgentRecords,
+  getAgentRecord,
+  upsertAgent,
+  deleteAgent,
+  listSkills,
+  getSkill,
+  upsertSkill,
+  deleteSkill,
+  listMcpServers,
+  getMcpServer,
+  upsertMcpServer,
+  deleteMcpServer,
+  listContextFiles,
+  getContextFile,
+  upsertContextFile,
+  deleteContextFile,
+  // project assignments
+  getProjectAgents,
+  setProjectAgents,
+  getProjectSkills,
+  setProjectSkills,
+  getProjectContextFiles,
+  setProjectContextFiles,
+  assignProjectContextFile,
+  unassignProjectContextFile,
+  getProjectMcps,
+  setProjectMcp,
+  removeProjectMcp,
 } from '@runner/core'
 
 const app = new Hono()
@@ -339,6 +368,223 @@ app.get('/api/sessions/:id/runs/:runId/changes', (c) => {
   return getSession(db, c.req.param('id'))
     ? c.json(getFileChangesForRun(db, c.req.param('runId')))
     : c.json({ error: 'Not found' }, 404)
+})
+
+// ── Resource library — agents ─────────────────────────────────────────────────
+
+app.get('/api/resources/agents', (c) => c.json(listAgentRecords(getDb())))
+
+app.post('/api/resources/agents', async (c) => {
+  const body = await c.req.json<{ name?: string; content?: string }>()
+  if (!body.name?.trim()) return c.json({ error: 'name is required' }, 400)
+  if (!body.content?.trim()) return c.json({ error: 'content is required' }, 400)
+  const id = body.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')
+  return c.json(upsertAgent(getDb(), { id, name: body.name.trim(), content: body.content.trim() }), 201)
+})
+
+app.get('/api/resources/agents/:id', (c) => {
+  const a = getAgentRecord(getDb(), c.req.param('id'))
+  return a ? c.json(a) : c.json({ error: 'Not found' }, 404)
+})
+
+app.put('/api/resources/agents/:id', async (c) => {
+  const db = getDb()
+  if (!getAgentRecord(db, c.req.param('id'))) return c.json({ error: 'Not found' }, 404)
+  const body = await c.req.json<{ name?: string; content?: string }>()
+  return c.json(upsertAgent(db, { id: c.req.param('id'), name: body.name?.trim() ?? c.req.param('id'), content: body.content?.trim() ?? '' }))
+})
+
+app.delete('/api/resources/agents/:id', (c) => {
+  const db = getDb()
+  if (!getAgentRecord(db, c.req.param('id'))) return c.json({ error: 'Not found' }, 404)
+  deleteAgent(db, c.req.param('id'))
+  return c.json({ ok: true })
+})
+
+// ── Resource library — skills ─────────────────────────────────────────────────
+
+app.get('/api/resources/skills', (c) => c.json(listSkills(getDb())))
+
+app.post('/api/resources/skills', async (c) => {
+  const body = await c.req.json<{ name?: string; content?: string }>()
+  if (!body.name?.trim()) return c.json({ error: 'name is required' }, 400)
+  if (!body.content?.trim()) return c.json({ error: 'content is required' }, 400)
+  const id = body.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')
+  return c.json(upsertSkill(getDb(), { id, name: body.name.trim(), content: body.content.trim() }), 201)
+})
+
+app.get('/api/resources/skills/:id', (c) => {
+  const s = getSkill(getDb(), c.req.param('id'))
+  return s ? c.json(s) : c.json({ error: 'Not found' }, 404)
+})
+
+app.put('/api/resources/skills/:id', async (c) => {
+  const db = getDb()
+  if (!getSkill(db, c.req.param('id'))) return c.json({ error: 'Not found' }, 404)
+  const body = await c.req.json<{ name?: string; content?: string }>()
+  return c.json(upsertSkill(db, { id: c.req.param('id'), name: body.name?.trim() ?? c.req.param('id'), content: body.content?.trim() ?? '' }))
+})
+
+app.delete('/api/resources/skills/:id', (c) => {
+  const db = getDb()
+  if (!getSkill(db, c.req.param('id'))) return c.json({ error: 'Not found' }, 404)
+  deleteSkill(db, c.req.param('id'))
+  return c.json({ ok: true })
+})
+
+// ── Resource library — MCP servers ───────────────────────────────────────────
+
+app.get('/api/resources/mcps', (c) => {
+  return c.json(listMcpServers(getDb()).map((m) => ({
+    ...m,
+    command: JSON.parse(m.command) as string[],
+    env: m.env ? JSON.parse(m.env) as Record<string, string> : null,
+  })))
+})
+
+app.post('/api/resources/mcps', async (c) => {
+  const body = await c.req.json<{ id?: string; name?: string; command?: unknown; env?: unknown }>()
+  if (!body.name?.trim()) return c.json({ error: 'name is required' }, 400)
+  if (!Array.isArray(body.command) || body.command.length === 0) return c.json({ error: 'command must be a non-empty array' }, 400)
+  const id = (body.id ?? body.name).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')
+  const env = body.env && typeof body.env === 'object' && !Array.isArray(body.env) ? body.env as Record<string, string> : undefined
+  return c.json(upsertMcpServer(getDb(), { id, name: body.name.trim(), command: body.command.map(String), env }), 201)
+})
+
+app.get('/api/resources/mcps/:id', (c) => {
+  const m = getMcpServer(getDb(), c.req.param('id'))
+  if (!m) return c.json({ error: 'Not found' }, 404)
+  return c.json({ ...m, command: JSON.parse(m.command), env: m.env ? JSON.parse(m.env) : null })
+})
+
+app.put('/api/resources/mcps/:id', async (c) => {
+  const db = getDb()
+  if (!getMcpServer(db, c.req.param('id'))) return c.json({ error: 'Not found' }, 404)
+  const body = await c.req.json<{ name?: string; command?: unknown; env?: unknown }>()
+  if (!Array.isArray(body.command) || body.command.length === 0) return c.json({ error: 'command must be a non-empty array' }, 400)
+  const env = body.env && typeof body.env === 'object' && !Array.isArray(body.env) ? body.env as Record<string, string> : undefined
+  const m = upsertMcpServer(db, { id: c.req.param('id'), name: body.name?.trim() ?? c.req.param('id'), command: (body.command as unknown[]).map(String), env })
+  return c.json({ ...m, command: JSON.parse(m.command), env: m.env ? JSON.parse(m.env) : null })
+})
+
+app.delete('/api/resources/mcps/:id', (c) => {
+  const db = getDb()
+  if (!getMcpServer(db, c.req.param('id'))) return c.json({ error: 'Not found' }, 404)
+  deleteMcpServer(db, c.req.param('id'))
+  return c.json({ ok: true })
+})
+
+// ── Resource library — context files ─────────────────────────────────────────
+
+app.get('/api/resources/contexts', (c) => c.json(listContextFiles(getDb())))
+
+app.post('/api/resources/contexts', async (c) => {
+  const body = await c.req.json<{ name?: string; type?: string; content?: string }>()
+  if (!body.name?.trim()) return c.json({ error: 'name is required' }, 400)
+  if (!body.content?.trim()) return c.json({ error: 'content is required' }, 400)
+  const id = body.name.trim().toLowerCase().replace(/[^a-z0-9.]+/g, '-')
+  return c.json(upsertContextFile(getDb(), { id, name: body.name.trim(), type: body.type?.trim() || undefined, content: body.content.trim() }), 201)
+})
+
+app.get('/api/resources/contexts/:id', (c) => {
+  const f = getContextFile(getDb(), c.req.param('id'))
+  return f ? c.json(f) : c.json({ error: 'Not found' }, 404)
+})
+
+app.put('/api/resources/contexts/:id', async (c) => {
+  const db = getDb()
+  if (!getContextFile(db, c.req.param('id'))) return c.json({ error: 'Not found' }, 404)
+  const body = await c.req.json<{ name?: string; type?: string; content?: string }>()
+  return c.json(upsertContextFile(db, { id: c.req.param('id'), name: body.name?.trim() ?? c.req.param('id'), type: body.type?.trim() || undefined, content: body.content?.trim() ?? '' }))
+})
+
+app.delete('/api/resources/contexts/:id', (c) => {
+  const db = getDb()
+  if (!getContextFile(db, c.req.param('id'))) return c.json({ error: 'Not found' }, 404)
+  deleteContextFile(db, c.req.param('id'))
+  return c.json({ ok: true })
+})
+
+// ── Project resource assignments ──────────────────────────────────────────────
+
+app.get('/api/projects/:id/resources', (c) => {
+  const db = getDb()
+  if (!getProject(db, c.req.param('id'))) return c.json({ error: 'Not found' }, 404)
+  const pid = c.req.param('id')
+  return c.json({
+    agents: getProjectAgents(db, pid),
+    skills: getProjectSkills(db, pid),
+    contexts: getProjectContextFiles(db, pid),
+    mcps: getProjectMcps(db, pid).map(({ server, env }) => ({
+      ...server,
+      command: JSON.parse(server.command) as string[],
+      env,
+    })),
+  })
+})
+
+app.put('/api/projects/:id/resources/agents', async (c) => {
+  const db = getDb()
+  if (!getProject(db, c.req.param('id'))) return c.json({ error: 'Not found' }, 404)
+  const { ids } = await c.req.json<{ ids: string[] }>()
+  if (!Array.isArray(ids)) return c.json({ error: 'ids must be an array' }, 400)
+  setProjectAgents(db, c.req.param('id'), ids)
+  return c.json(getProjectAgents(db, c.req.param('id')))
+})
+
+app.put('/api/projects/:id/resources/skills', async (c) => {
+  const db = getDb()
+  if (!getProject(db, c.req.param('id'))) return c.json({ error: 'Not found' }, 404)
+  const { ids } = await c.req.json<{ ids: string[] }>()
+  if (!Array.isArray(ids)) return c.json({ error: 'ids must be an array' }, 400)
+  setProjectSkills(db, c.req.param('id'), ids)
+  return c.json(getProjectSkills(db, c.req.param('id')))
+})
+
+app.put('/api/projects/:id/resources/contexts', async (c) => {
+  const db = getDb()
+  if (!getProject(db, c.req.param('id'))) return c.json({ error: 'Not found' }, 404)
+  const { ids } = await c.req.json<{ ids: string[] }>()
+  if (!Array.isArray(ids)) return c.json({ error: 'ids must be an array' }, 400)
+  setProjectContextFiles(db, c.req.param('id'), ids)
+  return c.json(getProjectContextFiles(db, c.req.param('id')))
+})
+
+app.post('/api/projects/:id/resources/contexts/:contextId', (c) => {
+  const db = getDb()
+  if (!getProject(db, c.req.param('id'))) return c.json({ error: 'Not found' }, 404)
+  if (!getContextFile(db, c.req.param('contextId'))) return c.json({ error: 'Context file not found' }, 404)
+  try {
+    assignProjectContextFile(db, c.req.param('id'), c.req.param('contextId'))
+  } catch (e) {
+    return c.json({ error: (e as Error).message }, 400)
+  }
+  return c.json(getProjectContextFiles(db, c.req.param('id')))
+})
+
+app.delete('/api/projects/:id/resources/contexts/:contextId', (c) => {
+  const db = getDb()
+  if (!getProject(db, c.req.param('id'))) return c.json({ error: 'Not found' }, 404)
+  unassignProjectContextFile(db, c.req.param('id'), c.req.param('contextId'))
+  return c.json({ ok: true })
+})
+
+app.put('/api/projects/:id/resources/mcps/:mcpId', async (c) => {
+  const db = getDb()
+  if (!getProject(db, c.req.param('id'))) return c.json({ error: 'Not found' }, 404)
+  if (!getMcpServer(db, c.req.param('mcpId'))) return c.json({ error: 'MCP server not found' }, 404)
+  const body = await c.req.json<{ envOverride?: Record<string, string> }>()
+  setProjectMcp(db, c.req.param('id'), c.req.param('mcpId'), body.envOverride)
+  return c.json(getProjectMcps(db, c.req.param('id')).map(({ server, env }) => ({
+    ...server, command: JSON.parse(server.command), env,
+  })))
+})
+
+app.delete('/api/projects/:id/resources/mcps/:mcpId', (c) => {
+  const db = getDb()
+  if (!getProject(db, c.req.param('id'))) return c.json({ error: 'Not found' }, 404)
+  removeProjectMcp(db, c.req.param('id'), c.req.param('mcpId'))
+  return c.json({ ok: true })
 })
 
 // ─────────────────────────────────────────────────────────────────────────────

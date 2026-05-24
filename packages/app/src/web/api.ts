@@ -43,6 +43,20 @@ export interface FileChange {
 export interface Skill { id: string; name: string; description: string; tags: string[] }
 export interface Agent { id: string; name: string; available: boolean; version: string | null; models: { id: string; label: string }[] }
 
+// ── Resource library types ────────────────────────────────────────────────────
+
+export interface AgentRecord { id: string; name: string; content: string; created_at: number; updated_at: number }
+export interface SkillRecord { id: string; name: string; content: string; created_at: number; updated_at: number }
+export interface McpServerRecord { id: string; name: string; command: string[]; env: Record<string, string> | null; created_at: number; updated_at: number }
+export interface ContextFileRecord { id: string; name: string; type: string | null; content: string; created_at: number; updated_at: number }
+
+export interface ProjectResources {
+  agents: AgentRecord[]
+  skills: SkillRecord[]
+  contexts: ContextFileRecord[]
+  mcps: (McpServerRecord & { env: Record<string, string> })[]
+}
+
 // ── QuestionForm types (mirrored from @runner/core for the browser bundle) ────
 
 export type QuestionType = 'text' | 'textarea' | 'radio' | 'checkbox'
@@ -116,6 +130,12 @@ async function patch<T>(url: string, body: unknown): Promise<T> {
   return r.json() as Promise<T>
 }
 
+async function put<T>(url: string, body: unknown): Promise<T> {
+  const r = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  if (!r.ok) throw new Error(`PUT ${url} → ${r.status}`)
+  return r.json() as Promise<T>
+}
+
 async function del(url: string): Promise<void> {
   const r = await fetch(url, { method: 'DELETE' })
   if (!r.ok) throw new Error(`DELETE ${url} → ${r.status}`)
@@ -170,4 +190,47 @@ export const api = {
   },
   skills: { list: () => get<Skill[]>('/api/skills') },
   agents: { list: () => get<Agent[]>('/api/agents') },
+
+  resources: {
+    agents: {
+      list: () => get<AgentRecord[]>('/api/resources/agents'),
+      get: (id: string) => get<AgentRecord>(`/api/resources/agents/${id}`),
+      create: (body: { name: string; content: string }) => post<AgentRecord>('/api/resources/agents', body),
+      update: (id: string, body: { name?: string; content?: string }) => put<AgentRecord>(`/api/resources/agents/${id}`, body),
+      remove: (id: string) => del(`/api/resources/agents/${id}`),
+    },
+    skills: {
+      list: () => get<SkillRecord[]>('/api/resources/skills'),
+      get: (id: string) => get<SkillRecord>(`/api/resources/skills/${id}`),
+      create: (body: { name: string; content: string }) => post<SkillRecord>('/api/resources/skills', body),
+      update: (id: string, body: { name?: string; content?: string }) => put<SkillRecord>(`/api/resources/skills/${id}`, body),
+      remove: (id: string) => del(`/api/resources/skills/${id}`),
+    },
+    mcps: {
+      list: () => get<McpServerRecord[]>('/api/resources/mcps'),
+      get: (id: string) => get<McpServerRecord>(`/api/resources/mcps/${id}`),
+      create: (body: { id?: string; name: string; command: string[]; env?: Record<string, string> }) => post<McpServerRecord>('/api/resources/mcps', body),
+      update: (id: string, body: { name?: string; command?: string[]; env?: Record<string, string> }) => put<McpServerRecord>(`/api/resources/mcps/${id}`, body),
+      remove: (id: string) => del(`/api/resources/mcps/${id}`),
+    },
+    contexts: {
+      list: () => get<ContextFileRecord[]>('/api/resources/contexts'),
+      get: (id: string) => get<ContextFileRecord>(`/api/resources/contexts/${id}`),
+      create: (body: { name: string; type?: string; content: string }) => post<ContextFileRecord>('/api/resources/contexts', body),
+      update: (id: string, body: { name?: string; type?: string; content?: string }) => put<ContextFileRecord>(`/api/resources/contexts/${id}`, body),
+      remove: (id: string) => del(`/api/resources/contexts/${id}`),
+    },
+  },
+
+  projectResources: {
+    get: (projectId: string) => get<ProjectResources>(`/api/projects/${projectId}/resources`),
+    setAgents: (projectId: string, ids: string[]) => put<AgentRecord[]>(`/api/projects/${projectId}/resources/agents`, { ids }),
+    setSkills: (projectId: string, ids: string[]) => put<SkillRecord[]>(`/api/projects/${projectId}/resources/skills`, { ids }),
+    setContexts: (projectId: string, ids: string[]) => put<ContextFileRecord[]>(`/api/projects/${projectId}/resources/contexts`, { ids }),
+    assignContext: (projectId: string, contextId: string) => post<ContextFileRecord[]>(`/api/projects/${projectId}/resources/contexts/${contextId}`, {}),
+    unassignContext: (projectId: string, contextId: string) => del(`/api/projects/${projectId}/resources/contexts/${contextId}`),
+    setMcp: (projectId: string, mcpId: string, envOverride?: Record<string, string>) =>
+      put<McpServerRecord[]>(`/api/projects/${projectId}/resources/mcps/${mcpId}`, { envOverride }),
+    removeMcp: (projectId: string, mcpId: string) => del(`/api/projects/${projectId}/resources/mcps/${mcpId}`),
+  },
 }

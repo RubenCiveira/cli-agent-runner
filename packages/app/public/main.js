@@ -23665,7 +23665,7 @@ var require_jsx_dev_runtime = __commonJS((exports, module) => {
 var import_client = __toESM(require_client(), 1);
 
 // src/web/App.tsx
-var import_react3 = __toESM(require_react(), 1);
+var import_react5 = __toESM(require_react(), 1);
 
 // src/web/api.ts
 function formatFormAnswers(form, answers) {
@@ -23718,6 +23718,12 @@ async function patch(url, body) {
     throw new Error(`PATCH ${url} → ${r.status}`);
   return r.json();
 }
+async function put(url, body) {
+  const r = await fetch(url, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (!r.ok)
+    throw new Error(`PUT ${url} → ${r.status}`);
+  return r.json();
+}
 async function del(url) {
   const r = await fetch(url, { method: "DELETE" });
   if (!r.ok)
@@ -23762,7 +23768,47 @@ var api = {
     }
   },
   skills: { list: () => get("/api/skills") },
-  agents: { list: () => get("/api/agents") }
+  agents: { list: () => get("/api/agents") },
+  resources: {
+    agents: {
+      list: () => get("/api/resources/agents"),
+      get: (id) => get(`/api/resources/agents/${id}`),
+      create: (body) => post("/api/resources/agents", body),
+      update: (id, body) => put(`/api/resources/agents/${id}`, body),
+      remove: (id) => del(`/api/resources/agents/${id}`)
+    },
+    skills: {
+      list: () => get("/api/resources/skills"),
+      get: (id) => get(`/api/resources/skills/${id}`),
+      create: (body) => post("/api/resources/skills", body),
+      update: (id, body) => put(`/api/resources/skills/${id}`, body),
+      remove: (id) => del(`/api/resources/skills/${id}`)
+    },
+    mcps: {
+      list: () => get("/api/resources/mcps"),
+      get: (id) => get(`/api/resources/mcps/${id}`),
+      create: (body) => post("/api/resources/mcps", body),
+      update: (id, body) => put(`/api/resources/mcps/${id}`, body),
+      remove: (id) => del(`/api/resources/mcps/${id}`)
+    },
+    contexts: {
+      list: () => get("/api/resources/contexts"),
+      get: (id) => get(`/api/resources/contexts/${id}`),
+      create: (body) => post("/api/resources/contexts", body),
+      update: (id, body) => put(`/api/resources/contexts/${id}`, body),
+      remove: (id) => del(`/api/resources/contexts/${id}`)
+    }
+  },
+  projectResources: {
+    get: (projectId) => get(`/api/projects/${projectId}/resources`),
+    setAgents: (projectId, ids) => put(`/api/projects/${projectId}/resources/agents`, { ids }),
+    setSkills: (projectId, ids) => put(`/api/projects/${projectId}/resources/skills`, { ids }),
+    setContexts: (projectId, ids) => put(`/api/projects/${projectId}/resources/contexts`, { ids }),
+    assignContext: (projectId, contextId) => post(`/api/projects/${projectId}/resources/contexts/${contextId}`, {}),
+    unassignContext: (projectId, contextId) => del(`/api/projects/${projectId}/resources/contexts/${contextId}`),
+    setMcp: (projectId, mcpId, envOverride) => put(`/api/projects/${projectId}/resources/mcps/${mcpId}`, { envOverride }),
+    removeMcp: (projectId, mcpId) => del(`/api/projects/${projectId}/resources/mcps/${mcpId}`)
+  }
 };
 
 // src/web/components/Sidebar.tsx
@@ -23812,15 +23858,39 @@ function ChatIcon() {
     }, undefined, false, undefined, this)
   }, undefined, false, undefined, this);
 }
+function LibraryIcon() {
+  return /* @__PURE__ */ jsx_dev_runtime.jsxDEV("svg", {
+    width: "15",
+    height: "15",
+    viewBox: "0 0 16 16",
+    fill: "currentColor",
+    children: /* @__PURE__ */ jsx_dev_runtime.jsxDEV("path", {
+      d: "M2.5 0h2A1.5 1.5 0 0 1 6 1.5v13A1.5 1.5 0 0 1 4.5 16h-2A1.5 1.5 0 0 1 1 14.5v-13A1.5 1.5 0 0 1 2.5 0Zm0 1.5v13h2v-13Zm5 0h2A1.5 1.5 0 0 1 11 3v10a1.5 1.5 0 0 1-1.5 1.5h-2A1.5 1.5 0 0 1 6 13V3a1.5 1.5 0 0 1 1.5-1.5Zm0 1.5V13h2V3Zm5.25-.5a.75.75 0 0 1 .71.504l2 6a.75.75 0 0 1-.71.996H13.5v4.25a.75.75 0 0 1-1.5 0V10H10.5v-.246l.002-.004 2-6a.75.75 0 0 1 .248-.25Z"
+    }, undefined, false, undefined, this)
+  }, undefined, false, undefined, this);
+}
+function SettingsIcon() {
+  return /* @__PURE__ */ jsx_dev_runtime.jsxDEV("svg", {
+    width: "15",
+    height: "15",
+    viewBox: "0 0 16 16",
+    fill: "currentColor",
+    children: /* @__PURE__ */ jsx_dev_runtime.jsxDEV("path", {
+      d: "M8 0a8.2 8.2 0 0 1 .701.031C9.444.095 9.99.645 10.16 1.29l.288 1.107c.018.066.079.158.212.224.231.114.454.243.668.386.123.082.233.09.299.071l1.103-.303c.644-.176 1.392.021 1.82.63.27.385.506.792.704 1.218.315.675.111 1.422-.364 1.891l-.814.806c-.049.048-.098.147-.088.294.016.257.016.515 0 .772-.01.147.038.246.088.294l.814.806c.475.469.679 1.216.364 1.891a7.977 7.977 0 0 1-.704 1.217c-.428.61-1.176.807-1.82.63l-1.102-.302c-.067-.019-.177-.011-.3.071a5.909 5.909 0 0 1-.668.386c-.133.066-.194.158-.211.224l-.29 1.106c-.168.646-.715 1.196-1.458 1.26a8.006 8.006 0 0 1-1.402 0c-.743-.064-1.289-.614-1.458-1.26l-.289-1.106c-.018-.066-.079-.158-.212-.224a5.738 5.738 0 0 1-.668-.386c-.123-.082-.233-.09-.299-.071l-1.103.303c-.644.176-1.392-.021-1.82-.63a8.12 8.12 0 0 1-.704-1.218c-.315-.675-.111-1.422.364-1.891l.814-.806c.049-.048.098-.147.088-.294a6.214 6.214 0 0 1 0-.772c.01-.147-.038-.246-.088-.294l-.814-.806C.83 6.585.626 5.838.941 5.163a7.86 7.86 0 0 1 .704-1.218c.428-.61 1.176-.807 1.82-.63l1.102.302c.067.019.177.011.3-.071.214-.143.437-.272.668-.386.133-.066.194-.158.211-.224l.29-1.106C6.009.645 6.556.095 7.299.03 7.53.01 7.764 0 8 0Zm-.571 1.525c-.036.003-.108.036-.137.146l-.289 1.105c-.147.561-.549.967-.998 1.189-.173.086-.34.183-.5.29-.417.278-.97.423-1.529.27l-1.103-.303c-.109-.03-.175.016-.195.045-.22.312-.412.644-.573.99-.014.031-.021.11.059.19l.815.806c.411.406.562.957.53 1.456a4.709 4.709 0 0 0 0 .582c.032.499-.119 1.05-.53 1.456l-.815.806c-.081.08-.073.159-.059.19.162.346.353.677.573.989.02.03.085.076.195.046l1.102-.303c.56-.153 1.113-.008 1.53.27.161.107.328.204.501.29.447.222.85.629.997 1.189l.289 1.105c.029.109.101.143.137.146a6.6 6.6 0 0 0 1.142 0c.036-.003.108-.036.137-.146l.289-1.105c.147-.561.549-.967.998-1.189.173-.086.34-.183.5-.29.417-.278.97-.423 1.529-.27l1.103.303c.109.029.175-.016.195-.045.22-.313.411-.644.573-.99.014-.031.021-.11-.059-.19l-.815-.806c-.411-.406-.562-.957-.53-1.456a4.709 4.709 0 0 0 0-.582c-.032-.499.119-1.05.53-1.456l.815-.806c.081-.08.073-.159.059-.19a6.464 6.464 0 0 0-.573-.989c-.02-.03-.085-.076-.195-.046l-1.102.303c-.56.153-1.113.008-1.53-.27a4.44 4.44 0 0 0-.501-.29c-.447-.222-.85-.629-.997-1.189l-.289-1.105c-.029-.11-.101-.143-.137-.146a6.6 6.6 0 0 0-1.142 0ZM8 5.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5ZM8 7a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z"
+    }, undefined, false, undefined, this)
+  }, undefined, false, undefined, this);
+}
 function Sidebar({
   projects,
   sessions,
   selectedProject,
   selectedSession,
+  view,
   onSelectProject,
   onSelectSession,
   onAddProject,
-  onNewSession
+  onNewSession,
+  onViewChange
 }) {
   return /* @__PURE__ */ jsx_dev_runtime.jsxDEV("aside", {
     className: "sidebar",
@@ -23857,7 +23927,7 @@ function Sidebar({
                 children: "No projects yet"
               }, undefined, false, undefined, this),
               projects.map((p) => /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                className: `sidebar-item ${selectedProject?.id === p.id ? "active" : ""}`,
+                className: `sidebar-item ${selectedProject?.id === p.id && view === "chat" ? "active" : ""}`,
                 onClick: () => onSelectProject(p),
                 children: [
                   /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
@@ -23865,7 +23935,7 @@ function Sidebar({
                     style: { display: "flex", alignItems: "center", gap: 6 },
                     children: [
                       /* @__PURE__ */ jsx_dev_runtime.jsxDEV(FolderIcon, {
-                        active: selectedProject?.id === p.id
+                        active: selectedProject?.id === p.id && view === "chat"
                       }, undefined, false, undefined, this),
                       p.name
                     ]
@@ -23914,7 +23984,7 @@ function Sidebar({
                 children: "No sessions yet"
               }, undefined, false, undefined, this),
               sessions.map((s) => /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
-                className: `sidebar-item ${selectedSession?.id === s.id ? "active" : ""}`,
+                className: `sidebar-item ${selectedSession?.id === s.id && view === "chat" ? "active" : ""}`,
                 onClick: () => onSelectSession(s),
                 children: [
                   /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
@@ -23939,6 +24009,33 @@ function Sidebar({
                   }, undefined, true, undefined, this)
                 ]
               }, s.id, true, undefined, this))
+            ]
+          }, undefined, true, undefined, this)
+        ]
+      }, undefined, true, undefined, this),
+      /* @__PURE__ */ jsx_dev_runtime.jsxDEV("div", {
+        className: "sidebar-footer",
+        children: [
+          selectedProject && /* @__PURE__ */ jsx_dev_runtime.jsxDEV("button", {
+            className: `sidebar-nav-btn${view === "project-resources" ? " active" : ""}`,
+            onClick: () => onViewChange(view === "project-resources" ? "chat" : "project-resources"),
+            title: "Project resources",
+            children: [
+              /* @__PURE__ */ jsx_dev_runtime.jsxDEV(SettingsIcon, {}, undefined, false, undefined, this),
+              /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
+                children: "Project resources"
+              }, undefined, false, undefined, this)
+            ]
+          }, undefined, true, undefined, this),
+          /* @__PURE__ */ jsx_dev_runtime.jsxDEV("button", {
+            className: `sidebar-nav-btn${view === "library" ? " active" : ""}`,
+            onClick: () => onViewChange(view === "library" ? "chat" : "library"),
+            title: "Resource library",
+            children: [
+              /* @__PURE__ */ jsx_dev_runtime.jsxDEV(LibraryIcon, {}, undefined, false, undefined, this),
+              /* @__PURE__ */ jsx_dev_runtime.jsxDEV("span", {
+                children: "Library"
+              }, undefined, false, undefined, this)
             ]
           }, undefined, true, undefined, this)
         ]
@@ -25039,40 +25136,1207 @@ function NewSessionModal({ projectId: _projectId, skills, agents, onCreate, onCl
   }, undefined, false, undefined, this);
 }
 
-// src/web/App.tsx
+// src/web/components/LibraryPanel.tsx
+var import_react3 = __toESM(require_react(), 1);
 var jsx_dev_runtime4 = __toESM(require_jsx_dev_runtime(), 1);
-function App() {
-  const [projects, setProjects] = import_react3.useState([]);
-  const [sessions, setSessions] = import_react3.useState([]);
-  const [skills, setSkills] = import_react3.useState([]);
-  const [agents, setAgents] = import_react3.useState([]);
-  const [selectedProject, setSelectedProject] = import_react3.useState(null);
-  const [selectedSession, setSelectedSession] = import_react3.useState(null);
-  const [showAddProject, setShowAddProject] = import_react3.useState(false);
-  const [showNewSession, setShowNewSession] = import_react3.useState(false);
+function Tabs({ active, onChange }) {
+  const tabs = [
+    { id: "agents", label: "Agents" },
+    { id: "skills", label: "Skills" },
+    { id: "mcps", label: "MCP servers" },
+    { id: "contexts", label: "Context files" }
+  ];
+  return /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+    className: "lib-tabs",
+    children: tabs.map((t) => /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("button", {
+      className: `lib-tab${active === t.id ? " active" : ""}`,
+      onClick: () => onChange(t.id),
+      children: t.label
+    }, t.id, false, undefined, this))
+  }, undefined, false, undefined, this);
+}
+function EmptyRow({ label }) {
+  return /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+    className: "lib-empty",
+    children: label
+  }, undefined, false, undefined, this);
+}
+function DeleteBtn({ onClick }) {
+  return /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("button", {
+    className: "btn-icon btn-icon-danger",
+    onClick,
+    title: "Delete",
+    children: /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("svg", {
+      width: "12",
+      height: "12",
+      viewBox: "0 0 16 16",
+      fill: "currentColor",
+      children: /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("path", {
+        d: "M11 1.75V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.496 6.675l.66 6.6a.25.25 0 0 0 .249.225h5.19a.25.25 0 0 0 .249-.225l.66-6.6a.75.75 0 0 1 1.492.149l-.66 6.6A1.748 1.748 0 0 1 10.595 15h-5.19a1.75 1.75 0 0 1-1.741-1.575l-.66-6.6a.75.75 0 1 1 1.492-.15ZM6.5 1.75V3h3V1.75a.25.25 0 0 0-.25-.25h-2.5a.25.25 0 0 0-.25.25Z"
+      }, undefined, false, undefined, this)
+    }, undefined, false, undefined, this)
+  }, undefined, false, undefined, this);
+}
+function EditBtn({ onClick }) {
+  return /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("button", {
+    className: "btn-icon",
+    onClick,
+    title: "Edit",
+    children: /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("svg", {
+      width: "12",
+      height: "12",
+      viewBox: "0 0 16 16",
+      fill: "currentColor",
+      children: /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("path", {
+        d: "M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Zm.176 4.823L9.75 4.81l-6.286 6.287a.253.253 0 0 0-.064.108l-.558 1.953 1.953-.558a.253.253 0 0 0 .108-.064Zm1.238-3.763a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354Z"
+      }, undefined, false, undefined, this)
+    }, undefined, false, undefined, this)
+  }, undefined, false, undefined, this);
+}
+function ContentModal({ title, initialName = "", initialContent = "", initialType = "", showType, onSave, onClose }) {
+  const [name, setName] = import_react3.useState(initialName);
+  const [content, setContent] = import_react3.useState(initialContent);
+  const [type, setType] = import_react3.useState(initialType);
+  const [loading, setLoading] = import_react3.useState(false);
+  const [error, setError] = import_react3.useState("");
+  async function submit(e) {
+    e.preventDefault();
+    if (!name.trim() || !content.trim())
+      return;
+    setLoading(true);
+    setError("");
+    try {
+      await onSave(name.trim(), content.trim(), showType ? type.trim() || undefined : undefined);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error saving");
+    } finally {
+      setLoading(false);
+    }
+  }
+  return /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+    className: "modal-overlay",
+    onClick: (e) => e.target === e.currentTarget && onClose(),
+    children: /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("form", {
+      className: "modal modal-wide",
+      onSubmit: submit,
+      children: [
+        /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("h2", {
+          children: title
+        }, undefined, false, undefined, this),
+        /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+          className: "field",
+          children: [
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("label", {
+              children: "Name"
+            }, undefined, false, undefined, this),
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("input", {
+              value: name,
+              onChange: (e) => setName(e.target.value),
+              placeholder: "my-agent",
+              autoFocus: true
+            }, undefined, false, undefined, this)
+          ]
+        }, undefined, true, undefined, this),
+        showType && /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+          className: "field",
+          children: [
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("label", {
+              children: [
+                "Type ",
+                /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("span", {
+                  style: { color: "var(--text-muted)", fontWeight: 400 },
+                  children: "(optional — one per type per project)"
+                }, undefined, false, undefined, this)
+              ]
+            }, undefined, true, undefined, this),
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("input", {
+              value: type,
+              onChange: (e) => setType(e.target.value),
+              placeholder: "e.g. Design"
+            }, undefined, false, undefined, this)
+          ]
+        }, undefined, true, undefined, this),
+        /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+          className: "field",
+          children: [
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("label", {
+              children: "Content (markdown)"
+            }, undefined, false, undefined, this),
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("textarea", {
+              className: "lib-textarea",
+              value: content,
+              onChange: (e) => setContent(e.target.value),
+              placeholder: "Write agent instructions..."
+            }, undefined, false, undefined, this)
+          ]
+        }, undefined, true, undefined, this),
+        error && /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("p", {
+          style: { color: "var(--red)", fontSize: 12 },
+          children: error
+        }, undefined, false, undefined, this),
+        /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+          className: "modal-actions",
+          children: [
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("button", {
+              type: "button",
+              className: "btn btn-ghost",
+              onClick: onClose,
+              children: "Cancel"
+            }, undefined, false, undefined, this),
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("button", {
+              type: "submit",
+              className: "btn btn-primary",
+              disabled: !name.trim() || !content.trim() || loading,
+              children: loading ? "Saving…" : "Save"
+            }, undefined, false, undefined, this)
+          ]
+        }, undefined, true, undefined, this)
+      ]
+    }, undefined, true, undefined, this)
+  }, undefined, false, undefined, this);
+}
+function McpModal({ initial, onSave, onClose }) {
+  const [name, setName] = import_react3.useState(initial?.name ?? "");
+  const [command, setCommand] = import_react3.useState(initial?.command.join(" ") ?? "");
+  const [envPairs, setEnvPairs] = import_react3.useState(() => {
+    const e = initial?.env;
+    if (!e)
+      return [{ k: "", v: "" }];
+    return [...Object.entries(e).map(([k, v]) => ({ k, v })), { k: "", v: "" }];
+  });
+  const [loading, setLoading] = import_react3.useState(false);
+  const [error, setError] = import_react3.useState("");
+  function setEnv(i, field, val) {
+    setEnvPairs((prev) => {
+      const next = [...prev];
+      next[i] = { ...next[i], [field]: val };
+      if (i === prev.length - 1 && (next[i].k || next[i].v))
+        next.push({ k: "", v: "" });
+      return next;
+    });
+  }
+  async function submit(e) {
+    e.preventDefault();
+    const parts = command.trim().split(/\s+/).filter(Boolean);
+    if (!name.trim() || parts.length === 0)
+      return;
+    const env = {};
+    for (const { k, v } of envPairs) {
+      if (k.trim())
+        env[k.trim()] = v;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      await onSave({ id: initial?.id, name: name.trim(), command: parts, env: Object.keys(env).length > 0 ? env : undefined });
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error saving");
+    } finally {
+      setLoading(false);
+    }
+  }
+  return /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+    className: "modal-overlay",
+    onClick: (e) => e.target === e.currentTarget && onClose(),
+    children: /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("form", {
+      className: "modal modal-wide",
+      onSubmit: submit,
+      children: [
+        /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("h2", {
+          children: initial ? "Edit MCP server" : "Add MCP server"
+        }, undefined, false, undefined, this),
+        /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+          className: "field",
+          children: [
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("label", {
+              children: "Name"
+            }, undefined, false, undefined, this),
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("input", {
+              value: name,
+              onChange: (e) => setName(e.target.value),
+              placeholder: "github",
+              autoFocus: true
+            }, undefined, false, undefined, this)
+          ]
+        }, undefined, true, undefined, this),
+        /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+          className: "field",
+          children: [
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("label", {
+              children: [
+                "Command ",
+                /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("span", {
+                  style: { color: "var(--text-muted)", fontWeight: 400 },
+                  children: "(space-separated)"
+                }, undefined, false, undefined, this)
+              ]
+            }, undefined, true, undefined, this),
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("input", {
+              value: command,
+              onChange: (e) => setCommand(e.target.value),
+              placeholder: "npx -y @modelcontextprotocol/server-github",
+              style: { fontFamily: "var(--mono)", fontSize: 12 }
+            }, undefined, false, undefined, this)
+          ]
+        }, undefined, true, undefined, this),
+        /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+          className: "field",
+          children: [
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("label", {
+              children: [
+                "Environment variables ",
+                /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("span", {
+                  style: { color: "var(--text-muted)", fontWeight: 400 },
+                  children: "(defaults, non-secret)"
+                }, undefined, false, undefined, this)
+              ]
+            }, undefined, true, undefined, this),
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+              style: { display: "flex", flexDirection: "column", gap: 4 },
+              children: envPairs.map((pair, i) => /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+                style: { display: "flex", gap: 6 },
+                children: [
+                  /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("input", {
+                    value: pair.k,
+                    onChange: (e) => setEnv(i, "k", e.target.value),
+                    placeholder: "KEY",
+                    style: { flex: 1, fontFamily: "var(--mono)", fontSize: 12 }
+                  }, undefined, false, undefined, this),
+                  /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("input", {
+                    value: pair.v,
+                    onChange: (e) => setEnv(i, "v", e.target.value),
+                    placeholder: "value",
+                    style: { flex: 2, fontFamily: "var(--mono)", fontSize: 12 }
+                  }, undefined, false, undefined, this)
+                ]
+              }, i, true, undefined, this))
+            }, undefined, false, undefined, this)
+          ]
+        }, undefined, true, undefined, this),
+        error && /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("p", {
+          style: { color: "var(--red)", fontSize: 12 },
+          children: error
+        }, undefined, false, undefined, this),
+        /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+          className: "modal-actions",
+          children: [
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("button", {
+              type: "button",
+              className: "btn btn-ghost",
+              onClick: onClose,
+              children: "Cancel"
+            }, undefined, false, undefined, this),
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("button", {
+              type: "submit",
+              className: "btn btn-primary",
+              disabled: !name.trim() || !command.trim() || loading,
+              children: loading ? "Saving…" : "Save"
+            }, undefined, false, undefined, this)
+          ]
+        }, undefined, true, undefined, this)
+      ]
+    }, undefined, true, undefined, this)
+  }, undefined, false, undefined, this);
+}
+function AgentsTab() {
+  const [items, setItems] = import_react3.useState([]);
+  const [modal, setModal] = import_react3.useState(null);
+  const load = import_react3.useCallback(() => api.resources.agents.list().then(setItems), []);
   import_react3.useEffect(() => {
+    load();
+  }, [load]);
+  async function save(name, content) {
+    if (modal?.mode === "edit")
+      await api.resources.agents.update(modal.item.id, { name, content });
+    else
+      await api.resources.agents.create({ name, content });
+    load();
+  }
+  async function remove(id) {
+    if (!confirm("Delete this agent?"))
+      return;
+    await api.resources.agents.remove(id);
+    load();
+  }
+  return /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+    className: "lib-tab-body",
+    children: [
+      /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+        className: "lib-toolbar",
+        children: [
+          /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("span", {
+            className: "lib-count",
+            children: [
+              items.length,
+              " agent",
+              items.length !== 1 ? "s" : ""
+            ]
+          }, undefined, true, undefined, this),
+          /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("button", {
+            className: "btn btn-primary btn-sm",
+            onClick: () => setModal({ mode: "add" }),
+            children: "Add agent"
+          }, undefined, false, undefined, this)
+        ]
+      }, undefined, true, undefined, this),
+      items.length === 0 ? /* @__PURE__ */ jsx_dev_runtime4.jsxDEV(EmptyRow, {
+        label: "No agents yet"
+      }, undefined, false, undefined, this) : /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+        className: "lib-list",
+        children: items.map((a) => /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+          className: "lib-item",
+          children: [
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+              className: "lib-item-name",
+              children: a.name
+            }, undefined, false, undefined, this),
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+              className: "lib-item-meta",
+              children: [
+                a.content.slice(0, 80).replace(/\n/g, " "),
+                "…"
+              ]
+            }, undefined, true, undefined, this),
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+              className: "lib-item-actions",
+              children: [
+                /* @__PURE__ */ jsx_dev_runtime4.jsxDEV(EditBtn, {
+                  onClick: () => setModal({ mode: "edit", item: a })
+                }, undefined, false, undefined, this),
+                /* @__PURE__ */ jsx_dev_runtime4.jsxDEV(DeleteBtn, {
+                  onClick: () => remove(a.id)
+                }, undefined, false, undefined, this)
+              ]
+            }, undefined, true, undefined, this)
+          ]
+        }, a.id, true, undefined, this))
+      }, undefined, false, undefined, this),
+      modal && /* @__PURE__ */ jsx_dev_runtime4.jsxDEV(ContentModal, {
+        title: modal.mode === "edit" ? "Edit agent" : "Add agent",
+        initialName: modal.mode === "edit" ? modal.item.name : "",
+        initialContent: modal.mode === "edit" ? modal.item.content : "",
+        onSave: save,
+        onClose: () => setModal(null)
+      }, undefined, false, undefined, this)
+    ]
+  }, undefined, true, undefined, this);
+}
+function SkillsTab() {
+  const [items, setItems] = import_react3.useState([]);
+  const [modal, setModal] = import_react3.useState(null);
+  const load = import_react3.useCallback(() => api.resources.skills.list().then(setItems), []);
+  import_react3.useEffect(() => {
+    load();
+  }, [load]);
+  async function save(name, content) {
+    if (modal?.mode === "edit")
+      await api.resources.skills.update(modal.item.id, { name, content });
+    else
+      await api.resources.skills.create({ name, content });
+    load();
+  }
+  async function remove(id) {
+    if (!confirm("Delete this skill?"))
+      return;
+    await api.resources.skills.remove(id);
+    load();
+  }
+  return /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+    className: "lib-tab-body",
+    children: [
+      /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+        className: "lib-toolbar",
+        children: [
+          /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("span", {
+            className: "lib-count",
+            children: [
+              items.length,
+              " skill",
+              items.length !== 1 ? "s" : ""
+            ]
+          }, undefined, true, undefined, this),
+          /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("button", {
+            className: "btn btn-primary btn-sm",
+            onClick: () => setModal({ mode: "add" }),
+            children: "Add skill"
+          }, undefined, false, undefined, this)
+        ]
+      }, undefined, true, undefined, this),
+      items.length === 0 ? /* @__PURE__ */ jsx_dev_runtime4.jsxDEV(EmptyRow, {
+        label: "No skills yet"
+      }, undefined, false, undefined, this) : /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+        className: "lib-list",
+        children: items.map((s) => /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+          className: "lib-item",
+          children: [
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+              className: "lib-item-name",
+              children: s.name
+            }, undefined, false, undefined, this),
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+              className: "lib-item-meta",
+              children: [
+                s.content.slice(0, 80).replace(/\n/g, " "),
+                "…"
+              ]
+            }, undefined, true, undefined, this),
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+              className: "lib-item-actions",
+              children: [
+                /* @__PURE__ */ jsx_dev_runtime4.jsxDEV(EditBtn, {
+                  onClick: () => setModal({ mode: "edit", item: s })
+                }, undefined, false, undefined, this),
+                /* @__PURE__ */ jsx_dev_runtime4.jsxDEV(DeleteBtn, {
+                  onClick: () => remove(s.id)
+                }, undefined, false, undefined, this)
+              ]
+            }, undefined, true, undefined, this)
+          ]
+        }, s.id, true, undefined, this))
+      }, undefined, false, undefined, this),
+      modal && /* @__PURE__ */ jsx_dev_runtime4.jsxDEV(ContentModal, {
+        title: modal.mode === "edit" ? "Edit skill" : "Add skill",
+        initialName: modal.mode === "edit" ? modal.item.name : "",
+        initialContent: modal.mode === "edit" ? modal.item.content : "",
+        onSave: save,
+        onClose: () => setModal(null)
+      }, undefined, false, undefined, this)
+    ]
+  }, undefined, true, undefined, this);
+}
+function McpsTab() {
+  const [items, setItems] = import_react3.useState([]);
+  const [modal, setModal] = import_react3.useState(null);
+  const load = import_react3.useCallback(() => api.resources.mcps.list().then(setItems), []);
+  import_react3.useEffect(() => {
+    load();
+  }, [load]);
+  async function save(data) {
+    if (modal?.mode === "edit")
+      await api.resources.mcps.update(modal.item.id, { name: data.name, command: data.command, env: data.env });
+    else
+      await api.resources.mcps.create(data);
+    load();
+  }
+  async function remove(id) {
+    if (!confirm("Delete this MCP server?"))
+      return;
+    await api.resources.mcps.remove(id);
+    load();
+  }
+  return /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+    className: "lib-tab-body",
+    children: [
+      /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+        className: "lib-toolbar",
+        children: [
+          /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("span", {
+            className: "lib-count",
+            children: [
+              items.length,
+              " server",
+              items.length !== 1 ? "s" : ""
+            ]
+          }, undefined, true, undefined, this),
+          /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("button", {
+            className: "btn btn-primary btn-sm",
+            onClick: () => setModal({ mode: "add" }),
+            children: "Add MCP server"
+          }, undefined, false, undefined, this)
+        ]
+      }, undefined, true, undefined, this),
+      items.length === 0 ? /* @__PURE__ */ jsx_dev_runtime4.jsxDEV(EmptyRow, {
+        label: "No MCP servers yet"
+      }, undefined, false, undefined, this) : /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+        className: "lib-list",
+        children: items.map((m) => /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+          className: "lib-item",
+          children: [
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+              className: "lib-item-name",
+              children: m.name
+            }, undefined, false, undefined, this),
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+              className: "lib-item-meta",
+              style: { fontFamily: "var(--mono)", fontSize: 11 },
+              children: m.command.join(" ")
+            }, undefined, false, undefined, this),
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+              className: "lib-item-actions",
+              children: [
+                /* @__PURE__ */ jsx_dev_runtime4.jsxDEV(EditBtn, {
+                  onClick: () => setModal({ mode: "edit", item: m })
+                }, undefined, false, undefined, this),
+                /* @__PURE__ */ jsx_dev_runtime4.jsxDEV(DeleteBtn, {
+                  onClick: () => remove(m.id)
+                }, undefined, false, undefined, this)
+              ]
+            }, undefined, true, undefined, this)
+          ]
+        }, m.id, true, undefined, this))
+      }, undefined, false, undefined, this),
+      modal && /* @__PURE__ */ jsx_dev_runtime4.jsxDEV(McpModal, {
+        initial: modal.mode === "edit" ? modal.item : undefined,
+        onSave: save,
+        onClose: () => setModal(null)
+      }, undefined, false, undefined, this)
+    ]
+  }, undefined, true, undefined, this);
+}
+function ContextsTab() {
+  const [items, setItems] = import_react3.useState([]);
+  const [modal, setModal] = import_react3.useState(null);
+  const load = import_react3.useCallback(() => api.resources.contexts.list().then(setItems), []);
+  import_react3.useEffect(() => {
+    load();
+  }, [load]);
+  async function save(name, content, type) {
+    if (modal?.mode === "edit")
+      await api.resources.contexts.update(modal.item.id, { name, content, type });
+    else
+      await api.resources.contexts.create({ name, content, type });
+    load();
+  }
+  async function remove(id) {
+    if (!confirm("Delete this context file?"))
+      return;
+    await api.resources.contexts.remove(id);
+    load();
+  }
+  return /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+    className: "lib-tab-body",
+    children: [
+      /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+        className: "lib-toolbar",
+        children: [
+          /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("span", {
+            className: "lib-count",
+            children: [
+              items.length,
+              " file",
+              items.length !== 1 ? "s" : ""
+            ]
+          }, undefined, true, undefined, this),
+          /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("button", {
+            className: "btn btn-primary btn-sm",
+            onClick: () => setModal({ mode: "add" }),
+            children: "Add context file"
+          }, undefined, false, undefined, this)
+        ]
+      }, undefined, true, undefined, this),
+      items.length === 0 ? /* @__PURE__ */ jsx_dev_runtime4.jsxDEV(EmptyRow, {
+        label: "No context files yet"
+      }, undefined, false, undefined, this) : /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+        className: "lib-list",
+        children: items.map((f) => /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+          className: "lib-item",
+          children: [
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+              className: "lib-item-name",
+              style: { display: "flex", alignItems: "center", gap: 6 },
+              children: [
+                f.name,
+                f.type && /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("span", {
+                  className: "tag",
+                  children: f.type
+                }, undefined, false, undefined, this)
+              ]
+            }, undefined, true, undefined, this),
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+              className: "lib-item-meta",
+              children: [
+                f.content.slice(0, 80).replace(/\n/g, " "),
+                "…"
+              ]
+            }, undefined, true, undefined, this),
+            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+              className: "lib-item-actions",
+              children: [
+                /* @__PURE__ */ jsx_dev_runtime4.jsxDEV(EditBtn, {
+                  onClick: () => setModal({ mode: "edit", item: f })
+                }, undefined, false, undefined, this),
+                /* @__PURE__ */ jsx_dev_runtime4.jsxDEV(DeleteBtn, {
+                  onClick: () => remove(f.id)
+                }, undefined, false, undefined, this)
+              ]
+            }, undefined, true, undefined, this)
+          ]
+        }, f.id, true, undefined, this))
+      }, undefined, false, undefined, this),
+      modal && /* @__PURE__ */ jsx_dev_runtime4.jsxDEV(ContentModal, {
+        title: modal.mode === "edit" ? "Edit context file" : "Add context file",
+        initialName: modal.mode === "edit" ? modal.item.name : "",
+        initialContent: modal.mode === "edit" ? modal.item.content : "",
+        initialType: modal.mode === "edit" ? modal.item.type ?? "" : "",
+        showType: true,
+        onSave: save,
+        onClose: () => setModal(null)
+      }, undefined, false, undefined, this)
+    ]
+  }, undefined, true, undefined, this);
+}
+function LibraryPanel() {
+  const [tab, setTab] = import_react3.useState("agents");
+  return /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+    className: "lib-panel",
+    children: [
+      /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+        className: "lib-header",
+        children: [
+          /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("h2", {
+            children: "Resource library"
+          }, undefined, false, undefined, this),
+          /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("p", {
+            children: "Agents, skills, MCP servers and context files available to assign to projects."
+          }, undefined, false, undefined, this)
+        ]
+      }, undefined, true, undefined, this),
+      /* @__PURE__ */ jsx_dev_runtime4.jsxDEV(Tabs, {
+        active: tab,
+        onChange: setTab
+      }, undefined, false, undefined, this),
+      tab === "agents" && /* @__PURE__ */ jsx_dev_runtime4.jsxDEV(AgentsTab, {}, undefined, false, undefined, this),
+      tab === "skills" && /* @__PURE__ */ jsx_dev_runtime4.jsxDEV(SkillsTab, {}, undefined, false, undefined, this),
+      tab === "mcps" && /* @__PURE__ */ jsx_dev_runtime4.jsxDEV(McpsTab, {}, undefined, false, undefined, this),
+      tab === "contexts" && /* @__PURE__ */ jsx_dev_runtime4.jsxDEV(ContextsTab, {}, undefined, false, undefined, this)
+    ]
+  }, undefined, true, undefined, this);
+}
+
+// src/web/components/ProjectResourcesPanel.tsx
+var import_react4 = __toESM(require_react(), 1);
+var jsx_dev_runtime5 = __toESM(require_jsx_dev_runtime(), 1);
+function Tabs2({ active, onChange }) {
+  const tabs = [
+    { id: "agents", label: "Agents" },
+    { id: "skills", label: "Skills" },
+    { id: "mcps", label: "MCP servers" },
+    { id: "contexts", label: "Context files" }
+  ];
+  return /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
+    className: "lib-tabs",
+    children: tabs.map((t) => /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("button", {
+      className: `lib-tab${active === t.id ? " active" : ""}`,
+      onClick: () => onChange(t.id),
+      children: t.label
+    }, t.id, false, undefined, this))
+  }, undefined, false, undefined, this);
+}
+function AssignAgents({ projectId }) {
+  const [all, setAll] = import_react4.useState([]);
+  const [assigned, setAssigned] = import_react4.useState(new Set);
+  const [saving, setSaving] = import_react4.useState(false);
+  const load = import_react4.useCallback(async () => {
+    const [allAgents, res] = await Promise.all([
+      api.resources.agents.list(),
+      api.projectResources.get(projectId)
+    ]);
+    setAll(allAgents);
+    setAssigned(new Set(res.agents.map((a) => a.id)));
+  }, [projectId]);
+  import_react4.useEffect(() => {
+    load();
+  }, [load]);
+  async function toggle(id) {
+    setSaving(true);
+    const next = new Set(assigned);
+    if (next.has(id))
+      next.delete(id);
+    else
+      next.add(id);
+    await api.projectResources.setAgents(projectId, [...next]);
+    setAssigned(next);
+    setSaving(false);
+  }
+  if (all.length === 0)
+    return /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
+      className: "lib-empty",
+      children: "No agents in library yet. Add some in the Library."
+    }, undefined, false, undefined, this);
+  return /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
+    className: "assign-list",
+    children: all.map((a) => /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("label", {
+      className: "assign-item",
+      children: [
+        /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("input", {
+          type: "checkbox",
+          checked: assigned.has(a.id),
+          onChange: () => !saving && toggle(a.id)
+        }, undefined, false, undefined, this),
+        /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
+          className: "assign-info",
+          children: [
+            /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("span", {
+              className: "assign-name",
+              children: a.name
+            }, undefined, false, undefined, this),
+            /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("span", {
+              className: "assign-meta",
+              children: [
+                a.content.slice(0, 100).replace(/\n/g, " "),
+                "…"
+              ]
+            }, undefined, true, undefined, this)
+          ]
+        }, undefined, true, undefined, this)
+      ]
+    }, a.id, true, undefined, this))
+  }, undefined, false, undefined, this);
+}
+function AssignSkills({ projectId }) {
+  const [all, setAll] = import_react4.useState([]);
+  const [assigned, setAssigned] = import_react4.useState(new Set);
+  const [saving, setSaving] = import_react4.useState(false);
+  const load = import_react4.useCallback(async () => {
+    const [allSkills, res] = await Promise.all([
+      api.resources.skills.list(),
+      api.projectResources.get(projectId)
+    ]);
+    setAll(allSkills);
+    setAssigned(new Set(res.skills.map((s) => s.id)));
+  }, [projectId]);
+  import_react4.useEffect(() => {
+    load();
+  }, [load]);
+  async function toggle(id) {
+    setSaving(true);
+    const next = new Set(assigned);
+    if (next.has(id))
+      next.delete(id);
+    else
+      next.add(id);
+    await api.projectResources.setSkills(projectId, [...next]);
+    setAssigned(next);
+    setSaving(false);
+  }
+  if (all.length === 0)
+    return /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
+      className: "lib-empty",
+      children: "No skills in library yet. Add some in the Library."
+    }, undefined, false, undefined, this);
+  return /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
+    className: "assign-list",
+    children: all.map((s) => /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("label", {
+      className: "assign-item",
+      children: [
+        /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("input", {
+          type: "checkbox",
+          checked: assigned.has(s.id),
+          onChange: () => !saving && toggle(s.id)
+        }, undefined, false, undefined, this),
+        /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
+          className: "assign-info",
+          children: [
+            /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("span", {
+              className: "assign-name",
+              children: s.name
+            }, undefined, false, undefined, this),
+            /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("span", {
+              className: "assign-meta",
+              children: [
+                s.content.slice(0, 100).replace(/\n/g, " "),
+                "…"
+              ]
+            }, undefined, true, undefined, this)
+          ]
+        }, undefined, true, undefined, this)
+      ]
+    }, s.id, true, undefined, this))
+  }, undefined, false, undefined, this);
+}
+function AssignMcps({ projectId }) {
+  const [all, setAll] = import_react4.useState([]);
+  const [state, setState] = import_react4.useState({});
+  const [saving, setSaving] = import_react4.useState(null);
+  const load = import_react4.useCallback(async () => {
+    const [allMcps, res] = await Promise.all([
+      api.resources.mcps.list(),
+      api.projectResources.get(projectId)
+    ]);
+    setAll(allMcps);
+    const s = {};
+    for (const m of allMcps) {
+      const assigned = res.mcps.find((pm) => pm.id === m.id);
+      s[m.id] = { enabled: !!assigned, envOverride: assigned?.env ?? {}, expanded: false };
+    }
+    setState(s);
+  }, [projectId]);
+  import_react4.useEffect(() => {
+    load();
+  }, [load]);
+  async function toggleEnabled(id) {
+    const cur = state[id];
+    if (!cur)
+      return;
+    setSaving(id);
+    if (cur.enabled) {
+      await api.projectResources.removeMcp(projectId, id);
+      setState((s) => ({ ...s, [id]: { ...s[id], enabled: false } }));
+    } else {
+      await api.projectResources.setMcp(projectId, id, Object.keys(cur.envOverride).length > 0 ? cur.envOverride : undefined);
+      setState((s) => ({ ...s, [id]: { ...s[id], enabled: true } }));
+    }
+    setSaving(null);
+  }
+  async function saveEnv(id, envOverride) {
+    setSaving(id);
+    await api.projectResources.setMcp(projectId, id, Object.keys(envOverride).length > 0 ? envOverride : undefined);
+    setState((s) => ({ ...s, [id]: { ...s[id], envOverride } }));
+    setSaving(null);
+  }
+  if (all.length === 0)
+    return /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
+      className: "lib-empty",
+      children: "No MCP servers in library yet. Add some in the Library."
+    }, undefined, false, undefined, this);
+  return /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
+    className: "assign-list",
+    children: all.map((m) => {
+      const s = state[m.id];
+      if (!s)
+        return null;
+      return /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
+        className: "assign-mcp-item",
+        children: [
+          /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
+            className: "assign-mcp-row",
+            children: [
+              /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("label", {
+                className: "assign-item",
+                style: { flex: 1 },
+                children: [
+                  /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("input", {
+                    type: "checkbox",
+                    checked: s.enabled,
+                    onChange: () => saving !== m.id && toggleEnabled(m.id)
+                  }, undefined, false, undefined, this),
+                  /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
+                    className: "assign-info",
+                    children: [
+                      /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("span", {
+                        className: "assign-name",
+                        children: m.name
+                      }, undefined, false, undefined, this),
+                      /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("span", {
+                        className: "assign-meta",
+                        style: { fontFamily: "var(--mono)", fontSize: 11 },
+                        children: m.command.join(" ")
+                      }, undefined, false, undefined, this)
+                    ]
+                  }, undefined, true, undefined, this)
+                ]
+              }, undefined, true, undefined, this),
+              s.enabled && /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("button", {
+                className: "btn-icon",
+                title: "Configure credentials",
+                onClick: () => setState((prev) => ({ ...prev, [m.id]: { ...prev[m.id], expanded: !prev[m.id].expanded } })),
+                children: /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("svg", {
+                  width: "12",
+                  height: "12",
+                  viewBox: "0 0 16 16",
+                  fill: "currentColor",
+                  children: [
+                    /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("path", {
+                      d: "M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"
+                    }, undefined, false, undefined, this),
+                    /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("path", {
+                      d: "M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z"
+                    }, undefined, false, undefined, this)
+                  ]
+                }, undefined, true, undefined, this)
+              }, undefined, false, undefined, this)
+            ]
+          }, undefined, true, undefined, this),
+          s.enabled && s.expanded && /* @__PURE__ */ jsx_dev_runtime5.jsxDEV(EnvOverrideEditor, {
+            baseEnv: m.env ?? {},
+            value: s.envOverride,
+            onSave: (env) => saveEnv(m.id, env),
+            saving: saving === m.id
+          }, undefined, false, undefined, this)
+        ]
+      }, m.id, true, undefined, this);
+    })
+  }, undefined, false, undefined, this);
+}
+function EnvOverrideEditor({
+  baseEnv,
+  value,
+  onSave,
+  saving
+}) {
+  const [pairs, setPairs] = import_react4.useState(() => {
+    const keys = new Set([...Object.keys(baseEnv), ...Object.keys(value)]);
+    const out = [...keys].map((k) => ({ k, v: value[k] ?? "" }));
+    return out.length > 0 ? [...out, { k: "", v: "" }] : [{ k: "", v: "" }];
+  });
+  function setRow(i, field, val) {
+    setPairs((prev) => {
+      const next = [...prev];
+      next[i] = { ...next[i], [field]: val };
+      if (i === prev.length - 1 && (next[i].k || next[i].v))
+        next.push({ k: "", v: "" });
+      return next;
+    });
+  }
+  function save() {
+    const env = {};
+    for (const { k, v } of pairs) {
+      if (k.trim())
+        env[k.trim()] = v;
+    }
+    onSave(env);
+  }
+  return /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
+    className: "env-editor",
+    children: [
+      /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
+        style: { fontSize: 11, color: "var(--text-muted)", marginBottom: 6 },
+        children: "Project credentials (override defaults)"
+      }, undefined, false, undefined, this),
+      pairs.map((pair, i) => /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
+        style: { display: "flex", gap: 6, marginBottom: 4 },
+        children: [
+          /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("input", {
+            value: pair.k,
+            onChange: (e) => setRow(i, "k", e.target.value),
+            placeholder: "KEY",
+            className: "env-input"
+          }, undefined, false, undefined, this),
+          /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("input", {
+            value: pair.v,
+            onChange: (e) => setRow(i, "v", e.target.value),
+            placeholder: "value",
+            type: pair.k.toLowerCase().includes("token") || pair.k.toLowerCase().includes("secret") || pair.k.toLowerCase().includes("key") ? "password" : "text",
+            className: "env-input env-input-val"
+          }, undefined, false, undefined, this)
+        ]
+      }, i, true, undefined, this)),
+      /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("button", {
+        className: "btn btn-ghost btn-sm",
+        onClick: save,
+        disabled: saving,
+        children: saving ? "Saving…" : "Save credentials"
+      }, undefined, false, undefined, this)
+    ]
+  }, undefined, true, undefined, this);
+}
+function AssignContexts({ projectId }) {
+  const [all, setAll] = import_react4.useState([]);
+  const [assignedIds, setAssignedIds] = import_react4.useState(new Set);
+  const [saving, setSaving] = import_react4.useState(false);
+  const load = import_react4.useCallback(async () => {
+    const [allCtx, res] = await Promise.all([
+      api.resources.contexts.list(),
+      api.projectResources.get(projectId)
+    ]);
+    setAll(allCtx);
+    setAssignedIds(new Set(res.contexts.map((c) => c.id)));
+  }, [projectId]);
+  import_react4.useEffect(() => {
+    load();
+  }, [load]);
+  async function toggle(file) {
+    setSaving(true);
+    if (assignedIds.has(file.id)) {
+      await api.projectResources.unassignContext(projectId, file.id);
+      setAssignedIds((s) => {
+        const n = new Set(s);
+        n.delete(file.id);
+        return n;
+      });
+    } else {
+      const updated = await api.projectResources.assignContext(projectId, file.id);
+      setAssignedIds(new Set(updated.map((c) => c.id)));
+    }
+    setSaving(false);
+  }
+  if (all.length === 0)
+    return /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
+      className: "lib-empty",
+      children: "No context files in library yet. Add some in the Library."
+    }, undefined, false, undefined, this);
+  const typed = new Map;
+  const untyped = [];
+  for (const f of all) {
+    if (f.type) {
+      const g = typed.get(f.type) ?? [];
+      g.push(f);
+      typed.set(f.type, g);
+    } else {
+      untyped.push(f);
+    }
+  }
+  return /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
+    className: "assign-list",
+    children: [
+      [...typed.entries()].map(([type, files]) => /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
+        className: "assign-ctx-group",
+        children: [
+          /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
+            className: "assign-ctx-type",
+            children: [
+              /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("span", {
+                className: "tag",
+                children: type
+              }, undefined, false, undefined, this),
+              /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("span", {
+                style: { fontSize: 11, color: "var(--text-muted)", marginLeft: 6 },
+                children: "— only one can be active"
+              }, undefined, false, undefined, this)
+            ]
+          }, undefined, true, undefined, this),
+          files.map((f) => /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("label", {
+            className: "assign-item",
+            children: [
+              /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("input", {
+                type: "radio",
+                name: `ctx-type-${type}-${projectId}`,
+                checked: assignedIds.has(f.id),
+                onChange: () => !saving && !assignedIds.has(f.id) && toggle(f)
+              }, undefined, false, undefined, this),
+              /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
+                className: "assign-info",
+                children: [
+                  /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("span", {
+                    className: "assign-name",
+                    children: f.name
+                  }, undefined, false, undefined, this),
+                  /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("span", {
+                    className: "assign-meta",
+                    children: [
+                      f.content.slice(0, 80).replace(/\n/g, " "),
+                      "…"
+                    ]
+                  }, undefined, true, undefined, this)
+                ]
+              }, undefined, true, undefined, this)
+            ]
+          }, f.id, true, undefined, this))
+        ]
+      }, type, true, undefined, this)),
+      untyped.length > 0 && /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
+        className: "assign-ctx-group",
+        children: [
+          typed.size > 0 && /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
+            className: "assign-ctx-type",
+            children: /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("span", {
+              style: { fontSize: 11, color: "var(--text-muted)" },
+              children: "Untyped (multiple allowed)"
+            }, undefined, false, undefined, this)
+          }, undefined, false, undefined, this),
+          untyped.map((f) => /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("label", {
+            className: "assign-item",
+            children: [
+              /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("input", {
+                type: "checkbox",
+                checked: assignedIds.has(f.id),
+                onChange: () => !saving && toggle(f)
+              }, undefined, false, undefined, this),
+              /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
+                className: "assign-info",
+                children: [
+                  /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("span", {
+                    className: "assign-name",
+                    children: f.name
+                  }, undefined, false, undefined, this),
+                  /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("span", {
+                    className: "assign-meta",
+                    children: [
+                      f.content.slice(0, 80).replace(/\n/g, " "),
+                      "…"
+                    ]
+                  }, undefined, true, undefined, this)
+                ]
+              }, undefined, true, undefined, this)
+            ]
+          }, f.id, true, undefined, this))
+        ]
+      }, undefined, true, undefined, this)
+    ]
+  }, undefined, true, undefined, this);
+}
+function ProjectResourcesPanel({ project }) {
+  const [tab, setTab] = import_react4.useState("agents");
+  return /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
+    className: "lib-panel",
+    children: [
+      /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
+        className: "lib-header",
+        children: [
+          /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("h2", {
+            children: [
+              project.name,
+              " — Resources"
+            ]
+          }, undefined, true, undefined, this),
+          /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("p", {
+            children: "Select which agents, skills, MCP servers and context files are injected into every session of this project."
+          }, undefined, false, undefined, this)
+        ]
+      }, undefined, true, undefined, this),
+      /* @__PURE__ */ jsx_dev_runtime5.jsxDEV(Tabs2, {
+        active: tab,
+        onChange: setTab
+      }, undefined, false, undefined, this),
+      /* @__PURE__ */ jsx_dev_runtime5.jsxDEV("div", {
+        className: "lib-tab-body",
+        children: [
+          tab === "agents" && /* @__PURE__ */ jsx_dev_runtime5.jsxDEV(AssignAgents, {
+            projectId: project.id
+          }, undefined, false, undefined, this),
+          tab === "skills" && /* @__PURE__ */ jsx_dev_runtime5.jsxDEV(AssignSkills, {
+            projectId: project.id
+          }, undefined, false, undefined, this),
+          tab === "mcps" && /* @__PURE__ */ jsx_dev_runtime5.jsxDEV(AssignMcps, {
+            projectId: project.id
+          }, undefined, false, undefined, this),
+          tab === "contexts" && /* @__PURE__ */ jsx_dev_runtime5.jsxDEV(AssignContexts, {
+            projectId: project.id
+          }, undefined, false, undefined, this)
+        ]
+      }, undefined, true, undefined, this)
+    ]
+  }, undefined, true, undefined, this);
+}
+
+// src/web/App.tsx
+var jsx_dev_runtime6 = __toESM(require_jsx_dev_runtime(), 1);
+function App() {
+  const [projects, setProjects] = import_react5.useState([]);
+  const [sessions, setSessions] = import_react5.useState([]);
+  const [skills, setSkills] = import_react5.useState([]);
+  const [agents, setAgents] = import_react5.useState([]);
+  const [selectedProject, setSelectedProject] = import_react5.useState(null);
+  const [selectedSession, setSelectedSession] = import_react5.useState(null);
+  const [view, setView] = import_react5.useState("chat");
+  const [showAddProject, setShowAddProject] = import_react5.useState(false);
+  const [showNewSession, setShowNewSession] = import_react5.useState(false);
+  import_react5.useEffect(() => {
     api.projects.list().then(setProjects);
     api.skills.list().then(setSkills);
     api.agents.list().then(setAgents);
   }, []);
-  import_react3.useEffect(() => {
+  import_react5.useEffect(() => {
     if (!selectedProject) {
       setSessions([]);
       return;
     }
     api.projects.sessions(selectedProject.id).then(setSessions);
   }, [selectedProject?.id]);
-  const handleSelectProject = import_react3.useCallback((p) => {
+  const handleSelectProject = import_react5.useCallback((p) => {
     setSelectedProject(p);
     setSelectedSession(null);
+    setView("chat");
   }, []);
-  const handleAddProject = import_react3.useCallback(async (folderPath, name) => {
+  const handleAddProject = import_react5.useCallback(async (folderPath, name) => {
     const project = await api.projects.add({ path: folderPath, name });
     const updated = await api.projects.list();
     setProjects(updated);
     setSelectedProject(project);
   }, []);
-  const handleCreateSession = import_react3.useCallback(async (opts) => {
+  const handleCreateSession = import_react5.useCallback(async (opts) => {
     if (!selectedProject)
       return;
     const session = await api.projects.createSession(selectedProject.id, opts);
@@ -25080,60 +26344,76 @@ function App() {
     setSessions(updatedSessions);
     setProjects((prev) => prev.map((p) => p.id === selectedProject.id ? { ...p, sessionCount: updatedSessions.length } : p));
     setSelectedSession(session);
+    setView("chat");
   }, [selectedProject]);
-  const handleSelectSession = import_react3.useCallback((s) => {
+  const handleSelectSession = import_react5.useCallback((s) => {
     setSelectedSession(s);
+    setView("chat");
   }, []);
-  return /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
+  const handleViewChange = import_react5.useCallback((v) => {
+    setView(v);
+    if (v !== "chat")
+      setSelectedSession(null);
+  }, []);
+  return /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("div", {
     className: "app",
     children: [
-      /* @__PURE__ */ jsx_dev_runtime4.jsxDEV(Sidebar, {
+      /* @__PURE__ */ jsx_dev_runtime6.jsxDEV(Sidebar, {
         projects,
         sessions,
         selectedProject,
         selectedSession,
+        view,
         onSelectProject: handleSelectProject,
         onSelectSession: handleSelectSession,
         onAddProject: () => setShowAddProject(true),
-        onNewSession: () => setShowNewSession(true)
+        onNewSession: () => setShowNewSession(true),
+        onViewChange: handleViewChange
       }, undefined, false, undefined, this),
-      /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("main", {
+      /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("main", {
         style: { display: "flex", flexDirection: "column", overflow: "hidden" },
-        children: selectedSession ? /* @__PURE__ */ jsx_dev_runtime4.jsxDEV(Chat, {
-          session: selectedSession
-        }, selectedSession.id, false, undefined, this) : /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
-          className: "empty-state",
-          children: [
-            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("div", {
-              className: "empty-icon",
-              children: "\uD83D\uDCAC"
-            }, undefined, false, undefined, this),
-            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("h2", {
-              children: selectedProject ? "No session selected" : "Select a project"
-            }, undefined, false, undefined, this),
-            /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("p", {
-              children: selectedProject ? "Create a new session or select one from the sidebar." : "Add a project folder from the sidebar to get started."
-            }, undefined, false, undefined, this),
-            selectedProject && /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("button", {
-              className: "btn btn-primary",
-              style: { marginTop: 8 },
-              onClick: () => setShowNewSession(true),
-              children: "New session"
-            }, undefined, false, undefined, this),
-            !selectedProject && /* @__PURE__ */ jsx_dev_runtime4.jsxDEV("button", {
-              className: "btn btn-ghost",
-              style: { marginTop: 8 },
-              onClick: () => setShowAddProject(true),
-              children: "Add project"
-            }, undefined, false, undefined, this)
-          ]
-        }, undefined, true, undefined, this)
-      }, undefined, false, undefined, this),
-      showAddProject && /* @__PURE__ */ jsx_dev_runtime4.jsxDEV(AddProjectModal, {
+        children: [
+          view === "library" && /* @__PURE__ */ jsx_dev_runtime6.jsxDEV(LibraryPanel, {}, undefined, false, undefined, this),
+          view === "project-resources" && selectedProject && /* @__PURE__ */ jsx_dev_runtime6.jsxDEV(ProjectResourcesPanel, {
+            project: selectedProject
+          }, undefined, false, undefined, this),
+          view === "chat" && selectedSession && /* @__PURE__ */ jsx_dev_runtime6.jsxDEV(Chat, {
+            session: selectedSession
+          }, selectedSession.id, false, undefined, this),
+          view === "chat" && !selectedSession && /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("div", {
+            className: "empty-state",
+            children: [
+              /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("div", {
+                className: "empty-icon",
+                children: "\uD83D\uDCAC"
+              }, undefined, false, undefined, this),
+              /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("h2", {
+                children: selectedProject ? "No session selected" : "Select a project"
+              }, undefined, false, undefined, this),
+              /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("p", {
+                children: selectedProject ? "Create a new session or select one from the sidebar." : "Add a project folder from the sidebar to get started."
+              }, undefined, false, undefined, this),
+              selectedProject && /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("button", {
+                className: "btn btn-primary",
+                style: { marginTop: 8 },
+                onClick: () => setShowNewSession(true),
+                children: "New session"
+              }, undefined, false, undefined, this),
+              !selectedProject && /* @__PURE__ */ jsx_dev_runtime6.jsxDEV("button", {
+                className: "btn btn-ghost",
+                style: { marginTop: 8 },
+                onClick: () => setShowAddProject(true),
+                children: "Add project"
+              }, undefined, false, undefined, this)
+            ]
+          }, undefined, true, undefined, this)
+        ]
+      }, undefined, true, undefined, this),
+      showAddProject && /* @__PURE__ */ jsx_dev_runtime6.jsxDEV(AddProjectModal, {
         onAdd: handleAddProject,
         onClose: () => setShowAddProject(false)
       }, undefined, false, undefined, this),
-      showNewSession && selectedProject && /* @__PURE__ */ jsx_dev_runtime4.jsxDEV(NewSessionModal, {
+      showNewSession && selectedProject && /* @__PURE__ */ jsx_dev_runtime6.jsxDEV(NewSessionModal, {
         projectId: selectedProject.id,
         skills,
         agents,
@@ -25145,6 +26425,6 @@ function App() {
 }
 
 // src/web/main.tsx
-var jsx_dev_runtime5 = __toESM(require_jsx_dev_runtime(), 1);
+var jsx_dev_runtime7 = __toESM(require_jsx_dev_runtime(), 1);
 var root = document.getElementById("root");
-import_client.createRoot(root).render(/* @__PURE__ */ jsx_dev_runtime5.jsxDEV(App, {}, undefined, false, undefined, this));
+import_client.createRoot(root).render(/* @__PURE__ */ jsx_dev_runtime7.jsxDEV(App, {}, undefined, false, undefined, this));

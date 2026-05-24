@@ -4,6 +4,10 @@ import type { Project, Session, Skill, Agent } from './api.ts'
 import { Sidebar } from './components/Sidebar.tsx'
 import { Chat } from './components/Chat.tsx'
 import { AddProjectModal, NewSessionModal } from './components/Modals.tsx'
+import { LibraryPanel } from './components/LibraryPanel.tsx'
+import { ProjectResourcesPanel } from './components/ProjectResourcesPanel.tsx'
+
+export type AppView = 'chat' | 'project-resources' | 'library'
 
 export function App() {
   const [projects, setProjects] = useState<Project[]>([])
@@ -13,30 +17,28 @@ export function App() {
 
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [selectedSession, setSelectedSession] = useState<Session | null>(null)
+  const [view, setView] = useState<AppView>('chat')
 
   const [showAddProject, setShowAddProject] = useState(false)
   const [showNewSession, setShowNewSession] = useState(false)
 
-  // Initial load
   useEffect(() => {
     api.projects.list().then(setProjects)
     api.skills.list().then(setSkills)
     api.agents.list().then(setAgents)
   }, [])
 
-  // Load sessions when project changes
   useEffect(() => {
     if (!selectedProject) { setSessions([]); return }
     api.projects.sessions(selectedProject.id).then(setSessions)
   }, [selectedProject?.id])
 
-  // Select project handler — deselect session if from different project
   const handleSelectProject = useCallback((p: Project) => {
     setSelectedProject(p)
     setSelectedSession(null)
+    setView('chat')
   }, [])
 
-  // Add project
   const handleAddProject = useCallback(async (folderPath: string, name?: string) => {
     const project = await api.projects.add({ path: folderPath, name })
     const updated = await api.projects.list()
@@ -44,7 +46,6 @@ export function App() {
     setSelectedProject(project)
   }, [])
 
-  // New session
   const handleCreateSession = useCallback(async (opts: {
     name?: string; agentId?: string; skillId?: string; model?: string
   }) => {
@@ -52,14 +53,19 @@ export function App() {
     const session = await api.projects.createSession(selectedProject.id, opts)
     const updatedSessions = await api.projects.sessions(selectedProject.id)
     setSessions(updatedSessions)
-    // Update project session count
     setProjects((prev) => prev.map((p) => p.id === selectedProject.id ? { ...p, sessionCount: updatedSessions.length } : p))
     setSelectedSession(session)
+    setView('chat')
   }, [selectedProject])
 
-  // Session selection — refresh messages are handled inside Chat
   const handleSelectSession = useCallback((s: Session) => {
     setSelectedSession(s)
+    setView('chat')
+  }, [])
+
+  const handleViewChange = useCallback((v: AppView) => {
+    setView(v)
+    if (v !== 'chat') setSelectedSession(null)
   }, [])
 
   return (
@@ -69,16 +75,26 @@ export function App() {
         sessions={sessions}
         selectedProject={selectedProject}
         selectedSession={selectedSession}
+        view={view}
         onSelectProject={handleSelectProject}
         onSelectSession={handleSelectSession}
         onAddProject={() => setShowAddProject(true)}
         onNewSession={() => setShowNewSession(true)}
+        onViewChange={handleViewChange}
       />
 
       <main style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {selectedSession ? (
+        {view === 'library' && <LibraryPanel />}
+
+        {view === 'project-resources' && selectedProject && (
+          <ProjectResourcesPanel project={selectedProject} />
+        )}
+
+        {view === 'chat' && selectedSession && (
           <Chat key={selectedSession.id} session={selectedSession} />
-        ) : (
+        )}
+
+        {view === 'chat' && !selectedSession && (
           <div className="empty-state">
             <div className="empty-icon">💬</div>
             <h2>{selectedProject ? 'No session selected' : 'Select a project'}</h2>

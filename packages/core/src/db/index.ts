@@ -252,9 +252,6 @@ CREATE TABLE IF NOT EXISTS project_context_files (
   context_type    TEXT,
   PRIMARY KEY (project_id, context_file_id)
 );
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_project_context_type
-  ON project_context_files(project_id, context_type) WHERE context_type IS NOT NULL;
 `
 
 let _db: Database | null = null
@@ -303,10 +300,8 @@ function runMigrations(db: Database): void {
     db.exec(`CREATE TABLE IF NOT EXISTS project_context_files (project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE, context_file_id TEXT NOT NULL REFERENCES context_files(id) ON DELETE CASCADE, PRIMARY KEY (project_id, context_file_id))`)
   } catch {}
   try { db.exec('ALTER TABLE context_files ADD COLUMN type TEXT') } catch {}
-  try {
-    db.exec('ALTER TABLE project_context_files ADD COLUMN context_type TEXT')
-    db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_project_context_type ON project_context_files(project_id, context_type) WHERE context_type IS NOT NULL')
-  } catch {}
+  try { db.exec('ALTER TABLE project_context_files ADD COLUMN context_type TEXT') } catch {}
+  try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_project_context_type ON project_context_files(project_id, context_type) WHERE context_type IS NOT NULL') } catch {}
 }
 
 // ── Projects ──────────────────────────────────────────────────────────────────

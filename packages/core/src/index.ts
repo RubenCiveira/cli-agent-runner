@@ -57,6 +57,47 @@ export {
   getFileChangesForSession,
 } from './db/index.ts'
 
+// DB — resource entities
+export type {
+  Agent,
+  Skill,
+  McpServer,
+  ContextFile,
+  ProjectMcp,
+  ResolvedProjectMcp,
+} from './db/index.ts'
+
+// DB — agents
+export { upsertAgent, getAgent as getAgentRecord, listAgents as listAgentRecords, deleteAgent } from './db/index.ts'
+
+// DB — skills
+export { upsertSkill, getSkill, listSkills, deleteSkill } from './db/index.ts'
+
+// DB — mcp servers
+export { upsertMcpServer, getMcpServer, listMcpServers, deleteMcpServer } from './db/index.ts'
+
+// DB — context files
+export { upsertContextFile, getContextFile, listContextFiles, deleteContextFile } from './db/index.ts'
+
+// DB — project resource assignments
+export {
+  setProjectAgents,
+  getProjectAgents,
+  setProjectSkills,
+  getProjectSkills,
+  assignProjectContextFile,
+  unassignProjectContextFile,
+  setProjectContextFiles,
+  getProjectContextFiles,
+  setProjectMcp,
+  removeProjectMcp,
+  getProjectMcps,
+} from './db/index.ts'
+
+// DB — seed
+export { seedFromDirectory } from './db/seed.ts'
+export type { SeedResult } from './db/seed.ts'
+
 // Runtimes
 export type {
   RuntimeAgent,
