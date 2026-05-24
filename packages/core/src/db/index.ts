@@ -76,6 +76,53 @@ export interface StoredFileChange {
   created_at: number
 }
 
+// ── Resource entity types ─────────────────────────────────────────────────────
+
+export interface Agent {
+  id: string
+  name: string
+  content: string
+  created_at: number
+  updated_at: number
+}
+
+export interface Skill {
+  id: string
+  name: string
+  content: string
+  created_at: number
+  updated_at: number
+}
+
+/** command and env are stored as JSON strings in SQLite */
+export interface McpServer {
+  id: string
+  name: string
+  /** JSON-serialised string[], e.g. '["npx","-y","@mcp/server"]' */
+  command: string
+  /** JSON-serialised Record<string,string> | null — non-secret defaults */
+  env: string | null
+  created_at: number
+  updated_at: number
+}
+
+export interface ContextFile {
+  id: string
+  /** Display filename, e.g. "Design.md" */
+  name: string
+  content: string
+  created_at: number
+  updated_at: number
+}
+
+/** Per-project MCP assignment with credential overrides */
+export interface ProjectMcp {
+  project_id: string
+  mcp_id: string
+  /** JSON-serialised Record<string,string> | null — project-specific env overrides (e.g. API keys) */
+  env_override: string | null
+}
+
 // ── Schema ────────────────────────────────────────────────────────────────────
 
 const SCHEMA = `
@@ -143,6 +190,64 @@ CREATE INDEX IF NOT EXISTS idx_runs_session        ON runs(session_id);
 CREATE INDEX IF NOT EXISTS idx_run_events_run      ON run_events(run_id);
 CREATE INDEX IF NOT EXISTS idx_file_changes_run    ON file_changes(run_id);
 CREATE INDEX IF NOT EXISTS idx_file_changes_session ON file_changes(session_id);
+
+CREATE TABLE IF NOT EXISTS agents (
+  id         TEXT PRIMARY KEY,
+  name       TEXT NOT NULL UNIQUE,
+  content    TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS skills (
+  id         TEXT PRIMARY KEY,
+  name       TEXT NOT NULL UNIQUE,
+  content    TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS mcp_servers (
+  id         TEXT PRIMARY KEY,
+  name       TEXT NOT NULL,
+  command    TEXT NOT NULL,
+  env        TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS context_files (
+  id         TEXT PRIMARY KEY,
+  name       TEXT NOT NULL UNIQUE,
+  content    TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS project_agents (
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  agent_id   TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+  PRIMARY KEY (project_id, agent_id)
+);
+
+CREATE TABLE IF NOT EXISTS project_skills (
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  skill_id   TEXT NOT NULL REFERENCES skills(id) ON DELETE CASCADE,
+  PRIMARY KEY (project_id, skill_id)
+);
+
+CREATE TABLE IF NOT EXISTS project_mcps (
+  project_id   TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  mcp_id       TEXT NOT NULL REFERENCES mcp_servers(id) ON DELETE CASCADE,
+  env_override TEXT,
+  PRIMARY KEY (project_id, mcp_id)
+);
+
+CREATE TABLE IF NOT EXISTS project_context_files (
+  project_id      TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  context_file_id TEXT NOT NULL REFERENCES context_files(id) ON DELETE CASCADE,
+  PRIMARY KEY (project_id, context_file_id)
+);
 `
 
 let _db: Database | null = null
@@ -179,6 +284,17 @@ function runMigrations(db: Database): void {
     db.exec('CREATE INDEX IF NOT EXISTS idx_file_changes_session ON file_changes(session_id)')
   } catch {}
   try { db.exec('ALTER TABLE file_changes ADD COLUMN external INTEGER NOT NULL DEFAULT 0') } catch {}
+  // Resource tables (added later — safe to re-run)
+  try {
+    db.exec(`CREATE TABLE IF NOT EXISTS agents (id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, content TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`)
+    db.exec(`CREATE TABLE IF NOT EXISTS skills (id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, content TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`)
+    db.exec(`CREATE TABLE IF NOT EXISTS mcp_servers (id TEXT PRIMARY KEY, name TEXT NOT NULL, command TEXT NOT NULL, env TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`)
+    db.exec(`CREATE TABLE IF NOT EXISTS context_files (id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, content TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`)
+    db.exec(`CREATE TABLE IF NOT EXISTS project_agents (project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE, agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE, PRIMARY KEY (project_id, agent_id))`)
+    db.exec(`CREATE TABLE IF NOT EXISTS project_skills (project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE, skill_id TEXT NOT NULL REFERENCES skills(id) ON DELETE CASCADE, PRIMARY KEY (project_id, skill_id))`)
+    db.exec(`CREATE TABLE IF NOT EXISTS project_mcps (project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE, mcp_id TEXT NOT NULL REFERENCES mcp_servers(id) ON DELETE CASCADE, env_override TEXT, PRIMARY KEY (project_id, mcp_id))`)
+    db.exec(`CREATE TABLE IF NOT EXISTS project_context_files (project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE, context_file_id TEXT NOT NULL REFERENCES context_files(id) ON DELETE CASCADE, PRIMARY KEY (project_id, context_file_id))`)
+  } catch {}
 }
 
 // ── Projects ──────────────────────────────────────────────────────────────────
@@ -460,4 +576,209 @@ export function getFileChangesForSession(
       'SELECT * FROM file_changes WHERE session_id = ? ORDER BY created_at ASC, path ASC',
     )
     .all(sessionId)
+}
+
+// ── Agents ────────────────────────────────────────────────────────────────────
+
+export function upsertAgent(
+  db: Database,
+  params: { id: string; name: string; content: string },
+): Agent {
+  const now = Date.now()
+  db.run(
+    `INSERT INTO agents (id, name, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET name = excluded.name, content = excluded.content, updated_at = excluded.updated_at`,
+    [params.id, params.name, params.content, now, now],
+  )
+  return db.query<Agent, string>('SELECT * FROM agents WHERE id = ?').get(params.id)!
+}
+
+export function getAgent(db: Database, id: string): Agent | null {
+  return db.query<Agent, string>('SELECT * FROM agents WHERE id = ?').get(id)
+}
+
+export function listAgents(db: Database): Agent[] {
+  return db.query<Agent, []>('SELECT * FROM agents ORDER BY name ASC').all()
+}
+
+export function deleteAgent(db: Database, id: string): void {
+  db.run('DELETE FROM agents WHERE id = ?', [id])
+}
+
+// ── Skills ────────────────────────────────────────────────────────────────────
+
+export function upsertSkill(
+  db: Database,
+  params: { id: string; name: string; content: string },
+): Skill {
+  const now = Date.now()
+  db.run(
+    `INSERT INTO skills (id, name, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET name = excluded.name, content = excluded.content, updated_at = excluded.updated_at`,
+    [params.id, params.name, params.content, now, now],
+  )
+  return db.query<Skill, string>('SELECT * FROM skills WHERE id = ?').get(params.id)!
+}
+
+export function getSkill(db: Database, id: string): Skill | null {
+  return db.query<Skill, string>('SELECT * FROM skills WHERE id = ?').get(id)
+}
+
+export function listSkills(db: Database): Skill[] {
+  return db.query<Skill, []>('SELECT * FROM skills ORDER BY name ASC').all()
+}
+
+export function deleteSkill(db: Database, id: string): void {
+  db.run('DELETE FROM skills WHERE id = ?', [id])
+}
+
+// ── MCP servers ───────────────────────────────────────────────────────────────
+
+export function upsertMcpServer(
+  db: Database,
+  params: { id: string; name: string; command: string[]; env?: Record<string, string> },
+): McpServer {
+  const now = Date.now()
+  const command = JSON.stringify(params.command)
+  const env = params.env && Object.keys(params.env).length > 0 ? JSON.stringify(params.env) : null
+  db.run(
+    `INSERT INTO mcp_servers (id, name, command, env, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET name = excluded.name, command = excluded.command, env = excluded.env, updated_at = excluded.updated_at`,
+    [params.id, params.name, command, env, now, now],
+  )
+  return db.query<McpServer, string>('SELECT * FROM mcp_servers WHERE id = ?').get(params.id)!
+}
+
+export function getMcpServer(db: Database, id: string): McpServer | null {
+  return db.query<McpServer, string>('SELECT * FROM mcp_servers WHERE id = ?').get(id)
+}
+
+export function listMcpServers(db: Database): McpServer[] {
+  return db.query<McpServer, []>('SELECT * FROM mcp_servers ORDER BY name ASC').all()
+}
+
+export function deleteMcpServer(db: Database, id: string): void {
+  db.run('DELETE FROM mcp_servers WHERE id = ?', [id])
+}
+
+// ── Context files ─────────────────────────────────────────────────────────────
+
+export function upsertContextFile(
+  db: Database,
+  params: { id: string; name: string; content: string },
+): ContextFile {
+  const now = Date.now()
+  db.run(
+    `INSERT INTO context_files (id, name, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET name = excluded.name, content = excluded.content, updated_at = excluded.updated_at`,
+    [params.id, params.name, params.content, now, now],
+  )
+  return db.query<ContextFile, string>('SELECT * FROM context_files WHERE id = ?').get(params.id)!
+}
+
+export function getContextFile(db: Database, id: string): ContextFile | null {
+  return db.query<ContextFile, string>('SELECT * FROM context_files WHERE id = ?').get(id)
+}
+
+export function listContextFiles(db: Database): ContextFile[] {
+  return db.query<ContextFile, []>('SELECT * FROM context_files ORDER BY name ASC').all()
+}
+
+export function deleteContextFile(db: Database, id: string): void {
+  db.run('DELETE FROM context_files WHERE id = ?', [id])
+}
+
+// ── Project resource assignments ──────────────────────────────────────────────
+
+export function setProjectAgents(db: Database, projectId: string, agentIds: string[]): void {
+  db.run('DELETE FROM project_agents WHERE project_id = ?', [projectId])
+  const insert = db.prepare('INSERT OR IGNORE INTO project_agents (project_id, agent_id) VALUES (?, ?)')
+  const run = db.transaction(() => { for (const id of agentIds) insert.run(projectId, id) })
+  run()
+}
+
+export function getProjectAgents(db: Database, projectId: string): Agent[] {
+  return db.query<Agent, string>(
+    `SELECT a.* FROM agents a
+     JOIN project_agents pa ON pa.agent_id = a.id
+     WHERE pa.project_id = ? ORDER BY a.name ASC`,
+  ).all(projectId)
+}
+
+export function setProjectSkills(db: Database, projectId: string, skillIds: string[]): void {
+  db.run('DELETE FROM project_skills WHERE project_id = ?', [projectId])
+  const insert = db.prepare('INSERT OR IGNORE INTO project_skills (project_id, skill_id) VALUES (?, ?)')
+  const run = db.transaction(() => { for (const id of skillIds) insert.run(projectId, id) })
+  run()
+}
+
+export function getProjectSkills(db: Database, projectId: string): Skill[] {
+  return db.query<Skill, string>(
+    `SELECT s.* FROM skills s
+     JOIN project_skills ps ON ps.skill_id = s.id
+     WHERE ps.project_id = ? ORDER BY s.name ASC`,
+  ).all(projectId)
+}
+
+export function setProjectContextFiles(
+  db: Database,
+  projectId: string,
+  contextFileIds: string[],
+): void {
+  db.run('DELETE FROM project_context_files WHERE project_id = ?', [projectId])
+  const insert = db.prepare(
+    'INSERT OR IGNORE INTO project_context_files (project_id, context_file_id) VALUES (?, ?)',
+  )
+  const run = db.transaction(() => { for (const id of contextFileIds) insert.run(projectId, id) })
+  run()
+}
+
+export function getProjectContextFiles(db: Database, projectId: string): ContextFile[] {
+  return db.query<ContextFile, string>(
+    `SELECT cf.* FROM context_files cf
+     JOIN project_context_files pcf ON pcf.context_file_id = cf.id
+     WHERE pcf.project_id = ? ORDER BY cf.name ASC`,
+  ).all(projectId)
+}
+
+/** Upsert an MCP assignment for a project, with optional per-project credential overrides. */
+export function setProjectMcp(
+  db: Database,
+  projectId: string,
+  mcpId: string,
+  envOverride?: Record<string, string>,
+): void {
+  const env = envOverride && Object.keys(envOverride).length > 0
+    ? JSON.stringify(envOverride)
+    : null
+  db.run(
+    `INSERT INTO project_mcps (project_id, mcp_id, env_override) VALUES (?, ?, ?)
+     ON CONFLICT(project_id, mcp_id) DO UPDATE SET env_override = excluded.env_override`,
+    [projectId, mcpId, env],
+  )
+}
+
+export function removeProjectMcp(db: Database, projectId: string, mcpId: string): void {
+  db.run('DELETE FROM project_mcps WHERE project_id = ? AND mcp_id = ?', [projectId, mcpId])
+}
+
+export interface ResolvedProjectMcp {
+  server: McpServer
+  /** Merged env: server defaults overridden by project-specific values */
+  env: Record<string, string>
+}
+
+/** Returns MCP servers assigned to a project with their fully-merged env. */
+export function getProjectMcps(db: Database, projectId: string): ResolvedProjectMcp[] {
+  const rows = db.query<McpServer & { env_override: string | null }, string>(
+    `SELECT m.*, pm.env_override FROM mcp_servers m
+     JOIN project_mcps pm ON pm.mcp_id = m.id
+     WHERE pm.project_id = ? ORDER BY m.name ASC`,
+  ).all(projectId)
+
+  return rows.map(({ env_override, ...server }) => {
+    const base: Record<string, string> = server.env ? JSON.parse(server.env) : {}
+    const override: Record<string, string> = env_override ? JSON.parse(env_override) : {}
+    return { server, env: { ...base, ...override } }
+  })
 }
