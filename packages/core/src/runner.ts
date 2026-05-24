@@ -22,7 +22,12 @@ import {
   touchSession,
   setExternalSessionId,
   saveFileChanges,
+  getProjectAgents,
+  getProjectSkills,
+  getProjectContextFiles,
+  getProjectMcps,
 } from './db/index.ts'
+import type { WorkspaceResources, McpServerConfig } from './runtimes/types.ts'
 
 export interface SendMessageParams {
   /** Existing session ID to continue, or omit to create a new one */
@@ -90,6 +95,7 @@ export async function sendMessage(params: SendMessageParams): Promise<SendMessag
   // ── Resolve project context ────────────────────────────────────────────────
   let projectPath: string | undefined
   let projectContext = ''
+  let workspaceResources: WorkspaceResources | undefined
 
   if (session.project_id) {
     const project = getProject(db, session.project_id)
@@ -97,6 +103,23 @@ export async function sendMessage(params: SendMessageParams): Promise<SendMessag
       projectPath = project.path
       const ctx = await loadProjectContext(project.path)
       projectContext = ctx.content
+
+      const pid = session.project_id
+      const dbAgents = getProjectAgents(db, pid)
+      const dbSkills = getProjectSkills(db, pid)
+      const dbContextFiles = getProjectContextFiles(db, pid)
+      const dbMcps = getProjectMcps(db, pid)
+
+      workspaceResources = {
+        agents: dbAgents.map((a) => ({ name: a.name, content: a.content })),
+        skills: dbSkills.map((s) => ({ name: s.name, content: s.content })),
+        contextFiles: dbContextFiles.map((c) => ({ name: c.name, content: c.content })),
+        mcps: dbMcps.map(({ server, env }): McpServerConfig => ({
+          id: server.id,
+          command: JSON.parse(server.command) as [string, ...string[]],
+          env: Object.keys(env).length > 0 ? env : undefined,
+        })),
+      }
     }
   }
 
@@ -163,6 +186,7 @@ export async function sendMessage(params: SendMessageParams): Promise<SendMessag
       options: {
         model: session!.model ?? undefined,
         externalSessionId: session!.external_session_id ?? undefined,
+        resources: workspaceResources,
       },
       cwd: projectPath,
       onExternalSessionId: (id) => {
